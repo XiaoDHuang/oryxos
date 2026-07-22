@@ -1,0 +1,51 @@
+spring:
+  application:
+    name: oryxos
+  threads:
+    virtual:
+      enabled: true
+  jpa:
+    database-platform: org.hibernate.community.dialect.SQLiteDialect
+    hibernate:
+      # Do NOT use update on SQLite (weak ALTER TABLE). Schema owned by db/schema.sql.
+      ddl-auto: none
+    open-in-view: false
+    defer-datasource-initialization: true
+  datasource:
+    url: jdbc:sqlite:.oryxos/oryxos.db
+    driver-class-name: org.sqlite.JDBC
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:db/schema.sql
+  # OpenAI-compatible Provider (DeepSeek / Kimi). Keys from env — never hardcode.
+  ai:
+    openai:
+      api-key: ${DEEPSEEK_API_KEY:}
+      base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
+      chat:
+        options:
+          model: ${DEEPSEEK_MODEL:deepseek-chat}
+
+# Sandbox whitelist (技术方案 / AGENTS.md). Tool execution must check these.
+oryxos:
+  sandbox:
+    file:
+      allowed-paths:
+        - .oryxos
+    shell:
+      allowed-commands:
+        - ls
+        - cat
+        - pwd
+        - echo
+    http:
+      allowed-domains:
+        - api.openweathermap.org
+
+logging:
+  level:
+    root: INFO
+    com.oryxos: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"

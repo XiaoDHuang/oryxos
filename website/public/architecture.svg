@@ -1,0 +1,168 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="920" viewBox="0 0 1120 920" role="img" aria-labelledby="title desc">
+  <title id="title">OryxOS Architecture</title>
+  <desc id="desc">Layered architecture: channels, ReAct core engine, Provider/Memory/Tool capabilities, and storage</desc>
+  <defs>
+    <style>
+      .title { font: 700 28px Inter, Segoe UI, system-ui, sans-serif; fill: #1a1a2e; }
+      .subtitle { font: 400 14px Inter, Segoe UI, system-ui, sans-serif; fill: #6b7280; }
+      .h1 { font: 700 15px Inter, Segoe UI, system-ui, sans-serif; fill: #1f2937; }
+      .h2 { font: 600 12px Inter, Segoe UI, system-ui, sans-serif; fill: #4b5563; }
+      .body { font: 400 11.5px Inter, Segoe UI, system-ui, sans-serif; fill: #374151; }
+      .mono { font: 500 11px ui-monospace, Cascadia Code, Consolas, monospace; fill: #4b5563; }
+      .white { fill: #ffffff; }
+      .channel-t { font: 700 16px Inter, Segoe UI, system-ui, sans-serif; fill: #ffffff; }
+      .channel-s { font: 400 11px Inter, Segoe UI, system-ui, sans-serif; fill: #dbeafe; }
+      .note { font: 400 10.5px Inter, Segoe UI, system-ui, sans-serif; fill: #6b7280; }
+    </style>
+    <marker id="arr-blue" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#3b82f6"/>
+    </marker>
+    <marker id="arr-orange" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto">
+      <path d="M0,0 L7,3.5 L0,7 Z" fill="#f59e0b"/>
+    </marker>
+    <marker id="arr-gray" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto">
+      <path d="M0,0 L7,3.5 L0,7 Z" fill="#94a3b8"/>
+    </marker>
+    <filter id="shadow" x="-4%" y="-4%" width="108%" height="112%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.08"/>
+    </filter>
+  </defs>
+
+  <!-- background -->
+  <rect width="1120" height="920" fill="#fafafa"/>
+
+  <!-- header -->
+  <text x="560" y="42" text-anchor="middle" class="title">OryxOS — Architecture</text>
+  <text x="560" y="66" text-anchor="middle" class="subtitle">Enterprise Agent OS · Java 21 + Spring Boot 3.x</text>
+
+  <!-- ===== Channel layer ===== -->
+  <g filter="url(#shadow)">
+    <rect x="200" y="92" width="280" height="72" rx="14" fill="#3b82f6"/>
+    <text x="340" y="122" text-anchor="middle" class="channel-t">CLI Channel</text>
+    <text x="340" y="144" text-anchor="middle" class="channel-s">oryxos chat · oryxos-channel-cli</text>
+  </g>
+  <g filter="url(#shadow)">
+    <rect x="640" y="92" width="280" height="72" rx="14" fill="#2563eb"/>
+    <text x="780" y="122" text-anchor="middle" class="channel-t">Web Service API</text>
+    <text x="780" y="144" text-anchor="middle" class="channel-s">REST /api/v1 · oryxos-web</text>
+  </g>
+  <line x1="480" y1="128" x2="640" y2="128" stroke="#93c5fd" stroke-width="2" stroke-dasharray="6 5"/>
+
+  <!-- arrows into core -->
+  <line x1="340" y1="164" x2="340" y2="210" stroke="#3b82f6" stroke-width="2" marker-end="url(#arr-blue)"/>
+  <line x1="780" y1="164" x2="780" y2="210" stroke="#3b82f6" stroke-width="2" marker-end="url(#arr-blue)"/>
+  <path d="M340,200 H560 H780" fill="none" stroke="#3b82f6" stroke-width="2"/>
+  <line x1="560" y1="200" x2="560" y2="228" stroke="#3b82f6" stroke-width="2" marker-end="url(#arr-blue)"/>
+
+  <!-- ===== Core Engine ===== -->
+  <g filter="url(#shadow)">
+    <rect x="48" y="232" width="1024" height="168" rx="16" fill="#fef9c3" stroke="#fde047" stroke-width="1.5"/>
+    <text x="68" y="258" class="h1">CORE ENGINE — oryxos-core</text>
+
+    <!-- pipeline boxes -->
+    <g>
+      <rect x="72" y="278" width="168" height="96" rx="10" fill="#ffffff" stroke="#e5e7eb"/>
+      <text x="156" y="308" text-anchor="middle" class="h1">PromptBuilder</text>
+      <text x="156" y="332" text-anchor="middle" class="body">System prompt</text>
+      <text x="156" y="350" text-anchor="middle" class="body">Memory · History · Tools</text>
+    </g>
+    <line x1="240" y1="326" x2="268" y2="326" stroke="#f59e0b" stroke-width="2.5" marker-end="url(#arr-orange)"/>
+
+    <g>
+      <rect x="268" y="278" width="168" height="96" rx="10" fill="#ffffff" stroke="#e5e7eb"/>
+      <text x="352" y="308" text-anchor="middle" class="h1">LLM Call</text>
+      <text x="352" y="332" text-anchor="middle" class="body">ProviderService</text>
+      <text x="352" y="350" text-anchor="middle" class="mono">ChatModel.call()</text>
+    </g>
+    <line x1="436" y1="326" x2="464" y2="326" stroke="#f59e0b" stroke-width="2.5" marker-end="url(#arr-orange)"/>
+
+    <g>
+      <rect x="464" y="278" width="168" height="96" rx="10" fill="#ffffff" stroke="#e5e7eb"/>
+      <text x="548" y="308" text-anchor="middle" class="h1">Reason</text>
+      <text x="548" y="332" text-anchor="middle" class="body">Tool call?</text>
+      <text x="548" y="350" text-anchor="middle" class="body">Final reply?</text>
+    </g>
+    <line x1="632" y1="326" x2="660" y2="326" stroke="#f59e0b" stroke-width="2.5" marker-end="url(#arr-orange)"/>
+
+    <g>
+      <rect x="660" y="278" width="168" height="96" rx="10" fill="#ffffff" stroke="#e5e7eb"/>
+      <text x="744" y="308" text-anchor="middle" class="h1">ToolExecutor</text>
+      <text x="744" y="332" text-anchor="middle" class="body">SandboxChecker</text>
+      <text x="744" y="350" text-anchor="middle" class="body">Execute + Audit</text>
+    </g>
+    <line x1="828" y1="326" x2="856" y2="326" stroke="#f59e0b" stroke-width="2.5" marker-end="url(#arr-orange)"/>
+
+    <g>
+      <rect x="856" y="278" width="188" height="96" rx="10" fill="#ffffff" stroke="#e5e7eb"/>
+      <text x="950" y="308" text-anchor="middle" class="h1">ReActLoop</text>
+      <text x="950" y="332" text-anchor="middle" class="body">max_iterations</text>
+      <text x="950" y="350" text-anchor="middle" class="body">→ next turn</text>
+    </g>
+  </g>
+
+  <!-- arrows to capability cards -->
+  <line x1="220" y1="400" x2="220" y2="448" stroke="#94a3b8" stroke-width="2" marker-end="url(#arr-gray)"/>
+  <line x1="560" y1="400" x2="560" y2="448" stroke="#94a3b8" stroke-width="2" marker-end="url(#arr-gray)"/>
+  <line x1="900" y1="400" x2="900" y2="448" stroke="#94a3b8" stroke-width="2" marker-end="url(#arr-gray)"/>
+
+  <!-- ===== Capability cards ===== -->
+  <!-- Provider -->
+  <g filter="url(#shadow)">
+    <rect x="48" y="452" width="320" height="188" rx="14" fill="#dcfce7" stroke="#86efac" stroke-width="1.5"/>
+    <text x="68" y="480" class="h1">Provider</text>
+    <text x="68" y="498" class="mono">oryxos-provider</text>
+    <rect x="68" y="512" width="280" height="108" rx="10" fill="#ffffff"/>
+    <text x="84" y="538" class="body">DeepSeek · Qwen · Kimi · Zhipu</text>
+    <text x="84" y="560" class="body">OpenAI · Anthropic · Ollama · vLLM</text>
+    <text x="84" y="586" class="note">显式 provider name → ChatModel 映射</text>
+    <text x="84" y="604" class="note">Spring AI 协议转换 · 禁用自动 tool 执行</text>
+  </g>
+
+  <!-- Memory -->
+  <g filter="url(#shadow)">
+    <rect x="400" y="452" width="320" height="188" rx="14" fill="#cffafe" stroke="#67e8f9" stroke-width="1.5"/>
+    <text x="420" y="480" class="h1">Memory</text>
+    <text x="420" y="498" class="mono">oryxos-memory</text>
+    <rect x="420" y="512" width="280" height="108" rx="10" fill="#ffffff"/>
+    <text x="436" y="538" class="body">Session Memory · SQLite messages_json</text>
+    <text x="436" y="560" class="body">Long-term Memory · MEMORY.md</text>
+    <text x="436" y="586" class="body">MemoryTools: save_memory / recall_memory</text>
+    <text x="436" y="604" class="note">三层统一门面 · 关键词检索</text>
+  </g>
+
+  <!-- Tool -->
+  <g filter="url(#shadow)">
+    <rect x="752" y="452" width="320" height="188" rx="14" fill="#ede9fe" stroke="#c4b5fd" stroke-width="1.5"/>
+    <text x="772" y="480" class="h1">Tool</text>
+    <text x="772" y="498" class="mono">oryxos-tool</text>
+    <rect x="772" y="512" width="280" height="108" rx="10" fill="#ffffff"/>
+    <text x="788" y="538" class="body">Built-in: read_file · write_file · shell</text>
+    <text x="788" y="560" class="body">http_get · http_post · MCP Client</text>
+    <text x="788" y="586" class="body">SandboxChecker: path / cmd / domain</text>
+    <text x="788" y="604" class="note">whitelist · Plugin Tool 三档接入</text>
+  </g>
+
+  <!-- arrows to storage -->
+  <line x1="208" y1="640" x2="208" y2="688" stroke="#94a3b8" stroke-width="2" marker-end="url(#arr-gray)"/>
+  <line x1="560" y1="640" x2="560" y2="688" stroke="#94a3b8" stroke-width="2" marker-end="url(#arr-gray)"/>
+  <line x1="912" y1="640" x2="912" y2="688" stroke="#94a3b8" stroke-width="2" marker-end="url(#arr-gray)"/>
+  <path d="M208,670 H560 H912" fill="none" stroke="#94a3b8" stroke-width="2"/>
+
+  <!-- ===== Storage ===== -->
+  <g filter="url(#shadow)">
+    <rect x="48" y="692" width="1024" height="200" rx="16" fill="#fce7f3" stroke="#f9a8d4" stroke-width="1.5"/>
+    <text x="68" y="720" class="h1">STORAGE — oryxos-storage</text>
+
+    <rect x="68" y="740" width="460" height="128" rx="12" fill="#ffffff"/>
+    <text x="88" y="768" class="h1">SQLite (oryxos.db)</text>
+    <text x="88" y="792" class="body">sessions · tool_invocations (audit) · llm_calls (audit)</text>
+    <text x="88" y="814" class="mono">SessionRepository · ToolInvocationRepository · LlmCallRepository</text>
+    <text x="88" y="840" class="note">△ audit tables written on Day One</text>
+
+    <rect x="552" y="740" width="500" height="128" rx="12" fill="#ffffff"/>
+    <text x="572" y="768" class="h1">File System (.oryxos/)</text>
+    <text x="572" y="792" class="body">profiles/ · memory/MEMORY.md · skills/ · logs/</text>
+    <text x="572" y="814" class="body">AGENTS.md · SOUL.md · USER.md · mcp_servers.yaml</text>
+    <text x="572" y="840" class="note">SnakeYAML profile parsing · ContextLoader bootstrap injection</text>
+  </g>
+</svg>

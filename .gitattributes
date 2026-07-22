@@ -1,0 +1,4 @@
+# Preserve agent symlinks across clones when core.symlinks is enabled
+CLAUDE.md symlink=true
+.claude/skills symlink=true
+.cursor/skills symlink=true

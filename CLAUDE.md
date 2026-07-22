@@ -1,0 +1,1 @@
+D:/project/AI-Coding/OryxOs/AGENTS.md

@@ -1,0 +1,10 @@
+---
+description: OryxOS shared agent instructions (Claude Code / Codex / Cursor)
+alwaysApply: true
+---
+
+# OryxOS Agent Rules
+
+Follow the project-wide agent instructions in [`AGENTS.md`](../../AGENTS.md).
+
+Skills live in [`.agents/skills/`](../skills/) (symlinked as `.cursor/skills`). Prefer project skills such as `layered-arch-diagram` when drawing architecture diagrams.

@@ -1,0 +1,59 @@
+# Build
+target/
+*.class
+*.jar
+*.war
+*.ear
+!**/src/main/**/lib/*.jar
+hs_err_pid*
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+*.swp
+*.swo
+.project
+.classpath
+.settings/
+bin/
+out/
+
+# Node / JavaScript
+node_modules/
+node_modules
+dist/
+*.log
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# VitePress
+.vitepress/cache/
+.vitepress/dist/
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# OryxOS local workspace (user data, never commit)
+.oryxos/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Logs & temp
+*.log
+logs/
+tmp/
+temp/
+
+# Maven wrapper local
+.mvn/wrapper/maven-wrapper.jar
