@@ -31,8 +31,8 @@ yarn.lock
 pnpm-lock.yaml
 
 # VitePress
-.vitepress/cache/
-.vitepress/dist/
+**/.vitepress/cache/
+**/.vitepress/dist/
 
 # OS
 .DS_Store
