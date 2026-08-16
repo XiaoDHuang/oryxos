@@ -1,0 +1,13 @@
+# OryxOS 项目级 Codex 配置
+# Codex 原生读取本仓库根目录的 AGENTS.md（统一指令）与 .agents/skills/（Skills），
+# 本文件只放项目级 Codex 运行参数，不重复指令内容。
+
+# 推理强度（与团队常用档位保持一致）
+model_reasoning_effort = "xhigh"
+
+# 允许访问网络（构建需下载 Maven 依赖）
+network_access = "enabled"
+
+# 项目上下文窗口与自动压缩阈值
+model_context_window = 1000000
+model_auto_compact_token_limit = 900000
