@@ -1,0 +1,10 @@
+repos:
+  - repo: local
+    hooks:
+      - id: oryxos-java-quality
+        name: OryxOS Java quality gates
+        # Keep the hook fast: format gate + SpotBugs locally; P3C/Checkstyle/CVE run in CI.
+        entry: mvn -B -ntp -DskipTests -Ddependency-check.skip=true -Dpmd.skip=true -Dcheckstyle.skip=true verify
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]

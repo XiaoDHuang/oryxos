@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
-                             http://maven.apache.org/xsd/maven-4.0.0.xsd">
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.oryxos</groupId>
@@ -15,13 +14,36 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven.compiler.source>21</maven.compiler.source>
-        <maven.compiler.target>21</maven.compiler.target>
-        <spring.boot.version>3.4.5</spring.boot.version>
-        <spring-ai.version>1.0.0</spring-ai.version>
-        <picocli.version>4.7.5</picocli.version>
-        <sqlite-jdbc.version>3.45.1.0</sqlite-jdbc.version>
-        <springdoc.version>2.5.0</springdoc.version>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <maven.compiler.release>21</maven.compiler.release>
+
+        <!-- Runtime dependencies: pinned for reproducible builds. -->
+        <spring.boot.version>3.5.16</spring.boot.version>
+        <spring-ai.version>1.1.8</spring-ai.version>
+        <picocli.version>4.7.7</picocli.version>
+        <sqlite-jdbc.version>3.53.1.0</sqlite-jdbc.version>
+        <!-- Same line as the Spring Boot BOM manages today; declared explicitly so it stays pinned. -->
+        <snakeyaml.version>2.4</snakeyaml.version>
+        <springdoc.version>2.8.17</springdoc.version>
+        <!-- 9.x requires Jackson 3; Spring Boot 3.5 is on the Jackson 2 line. -->
+        <logstash-logback-encoder.version>8.1</logstash-logback-encoder.version>
+
+        <!-- Build and quality plugins. -->
+        <maven-compiler-plugin.version>3.15.0</maven-compiler-plugin.version>
+        <maven-surefire-plugin.version>3.5.4</maven-surefire-plugin.version>
+        <spotless.version>3.9.0</spotless.version>
+        <maven-checkstyle-plugin.version>3.6.0</maven-checkstyle-plugin.version>
+        <checkstyle.version>13.9.0</checkstyle.version>
+        <!-- P3C 2.1.1 is based on PMD 6; keep the last compatible Maven plugin line. -->
+        <maven-pmd-plugin.version>3.21.2</maven-pmd-plugin.version>
+        <p3c.version>2.1.1</p3c.version>
+        <!-- P3C's PMD 6 line bundles an ASM version that cannot read JDK 21 classes. -->
+        <asm.version>9.8</asm.version>
+        <spotbugs-maven-plugin.version>4.10.3.0</spotbugs-maven-plugin.version>
+        <spotbugs-annotations.version>4.10.3</spotbugs-annotations.version>
+        <findsecbugs.version>1.14.0</findsecbugs.version>
+        <dependency-check.version>12.2.2</dependency-check.version>
+        <dependency-check.skip>false</dependency-check.skip>
     </properties>
 
     <modules>
@@ -45,7 +67,6 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
-
             <dependency>
                 <groupId>org.springframework.ai</groupId>
                 <artifactId>spring-ai-bom</artifactId>
@@ -54,7 +75,7 @@
                 <scope>import</scope>
             </dependency>
 
-            <!-- Internal modules -->
+            <!-- Internal modules. -->
             <dependency>
                 <groupId>com.oryxos</groupId>
                 <artifactId>oryxos-core</artifactId>
@@ -101,17 +122,30 @@
                 <artifactId>picocli</artifactId>
                 <version>${picocli.version}</version>
             </dependency>
-
             <dependency>
                 <groupId>org.xerial</groupId>
                 <artifactId>sqlite-jdbc</artifactId>
                 <version>${sqlite-jdbc.version}</version>
             </dependency>
-
+            <dependency>
+                <groupId>org.yaml</groupId>
+                <artifactId>snakeyaml</artifactId>
+                <version>${snakeyaml.version}</version>
+            </dependency>
             <dependency>
                 <groupId>org.springdoc</groupId>
                 <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
                 <version>${springdoc.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>net.logstash.logback</groupId>
+                <artifactId>logstash-logback-encoder</artifactId>
+                <version>${logstash-logback-encoder.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.github.spotbugs</groupId>
+                <artifactId>spotbugs-annotations</artifactId>
+                <version>${spotbugs-annotations.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -127,24 +161,185 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-compiler-plugin</artifactId>
-                    <version>3.12.1</version>
+                    <version>${maven-compiler-plugin.version}</version>
                     <configuration>
-                        <source>21</source>
-                        <target>21</target>
-                        <release>21</release>
+                        <release>${maven.compiler.release}</release>
+                        <parameters>true</parameters>
                     </configuration>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-surefire-plugin</artifactId>
-                    <version>3.2.5</version>
+                    <version>${maven-surefire-plugin.version}</version>
                 </plugin>
             </plugins>
         </pluginManagement>
+
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+            </plugin>
+
+            <!-- Format: Google Java Format is the single source of formatting truth. -->
+            <plugin>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
+                <version>${spotless.version}</version>
+                <configuration>
+                    <java>
+                        <googleJavaFormat>
+                            <style>GOOGLE</style>
+                        </googleJavaFormat>
+                        <removeUnusedImports/>
+                        <importOrder/>
+                    </java>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>spotless-check</id>
+                        <phase>validate</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Style fallback: Google checks complement the auto-formatter. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-checkstyle-plugin</artifactId>
+                <version>${maven-checkstyle-plugin.version}</version>
+                <configuration>
+                    <configLocation>google_checks.xml</configLocation>
+                    <consoleOutput>true</consoleOutput>
+                    <failOnViolation>true</failOnViolation>
+                    <violationSeverity>warning</violationSeverity>
+                    <includeTestSourceDirectory>true</includeTestSourceDirectory>
+                </configuration>
+                <dependencies>
+                    <dependency>
+                        <groupId>com.puppycrawl.tools</groupId>
+                        <artifactId>checkstyle</artifactId>
+                        <version>${checkstyle.version}</version>
+                    </dependency>
+                </dependencies>
+                <executions>
+                    <execution>
+                        <id>checkstyle-check</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Coding conventions: Alibaba P3C rules running on the compatible PMD 6 line. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-pmd-plugin</artifactId>
+                <version>${maven-pmd-plugin.version}</version>
+                <configuration>
+                    <!-- PMD 6.55 (required by P3C) supports source levels through Java 20. -->
+                    <targetJdk>20</targetJdk>
+                    <printFailingErrors>true</printFailingErrors>
+                    <failOnViolation>true</failOnViolation>
+                    <skipPmdError>false</skipPmdError>
+                    <linkXRef>false</linkXRef>
+                    <rulesets>
+                        <ruleset>rulesets/java/ali-comment.xml</ruleset>
+                        <ruleset>rulesets/java/ali-concurrent.xml</ruleset>
+                        <ruleset>rulesets/java/ali-constant.xml</ruleset>
+                        <ruleset>rulesets/java/ali-exception.xml</ruleset>
+                        <ruleset>rulesets/java/ali-flowcontrol.xml</ruleset>
+                        <ruleset>rulesets/java/ali-naming.xml</ruleset>
+                        <ruleset>rulesets/java/ali-oop.xml</ruleset>
+                        <ruleset>rulesets/java/ali-orm.xml</ruleset>
+                        <ruleset>rulesets/java/ali-other.xml</ruleset>
+                        <ruleset>rulesets/java/ali-set.xml</ruleset>
+                    </rulesets>
+                </configuration>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.ow2.asm</groupId>
+                        <artifactId>asm</artifactId>
+                        <version>${asm.version}</version>
+                    </dependency>
+                    <dependency>
+                        <groupId>com.alibaba.p3c</groupId>
+                        <artifactId>p3c-pmd</artifactId>
+                        <version>${p3c.version}</version>
+                    </dependency>
+                </dependencies>
+                <executions>
+                    <execution>
+                        <id>p3c-check</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Bytecode and security analysis. -->
+            <plugin>
+                <groupId>com.github.spotbugs</groupId>
+                <artifactId>spotbugs-maven-plugin</artifactId>
+                <version>${spotbugs-maven-plugin.version}</version>
+                <configuration>
+                    <effort>Max</effort>
+                    <threshold>Low</threshold>
+                    <failOnError>true</failOnError>
+                    <plugins>
+                        <plugin>
+                            <groupId>com.h3xstream.findsecbugs</groupId>
+                            <artifactId>findsecbugs-plugin</artifactId>
+                            <version>${findsecbugs.version}</version>
+                        </plugin>
+                    </plugins>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>spotbugs-check</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Scan each module after its dependencies have reached verify in reactor order. -->
+            <plugin>
+                <groupId>org.owasp</groupId>
+                <artifactId>dependency-check-maven</artifactId>
+                <version>${dependency-check.version}</version>
+                <configuration>
+                    <skip>${dependency-check.skip}</skip>
+                    <failOnError>true</failOnError>
+                    <failBuildOnCVSS>7.0</failBuildOnCVSS>
+                    <nvdApiKeyEnvironmentVariable>NVD_API_KEY</nvdApiKeyEnvironmentVariable>
+                    <formats>
+                        <format>HTML</format>
+                        <format>JSON</format>
+                    </formats>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>dependency-check</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
