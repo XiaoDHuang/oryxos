@@ -42,9 +42,7 @@ class ApiResponseTest {
     JsonNode json = objectMapper.valueToTree(response);
 
     assertThat(response.getErrorCode()).isEqualTo(response.errorCode()).isEqualTo("AGENT_TIMEOUT");
-    assertThat(response.getMessage())
-        .isEqualTo(response.message())
-        .isEqualTo("Agent invocation timed out");
+    assertThat(response.getMessage()).isEqualTo(response.message()).isEqualTo("Agent 调用超时");
     assertThat(response.getTimestamp()).isEqualTo(response.timestamp()).isNotNull();
     assertThat(json.size()).isEqualTo(3);
     assertThat(json.get("errorCode").asText()).isEqualTo("AGENT_TIMEOUT");

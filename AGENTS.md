@@ -225,6 +225,7 @@ OryxOS 作为开源项目需要一个独立主页作为对外门面，讲清楚�
 Constitution（`.specify/memory/constitution.md`）的非协商原则，实质就是本文件「七个关键技术决策」外加几条项目级底线（JDK 21 + Spring Boot 单体、五大能力优先支撑模块次之、Plugin Tool 三档主推 SKILL.md+MCP、跑通优先于完美）。**不允许 AI agent 自行修改 constitution**；发现某条原则不对，停下来跟用户讨论。Spec-Kit 产物（`constitution.md`、`spec.md`、`plan.md`）主体开发后**保留在仓库**作为社区接力的长期参考。
 
 实施纪律（都是文档点名 AI agent 容易出问题的地方）：
+- **注释用中文**：代码注释（Javadoc/行内注释）与错误/审计消息一律简体中文，只写"为什么"；标识符、类名、方法名、`@author` 等保持英文。
 - **版本锁定 Spec-Kit**：实施前锁定 Specify CLI 一个版本号，主体开发期间不升级，不引入社区 extension。
 - **跨 user story 上下文别丢**：每个 user story 开始前重读 `spec.md` + `plan.md` + 最近代码。
 - **US-2 的 Session 是内存版**，到 US-5 才升级成 SQLite 持久化（跨重启恢复）；`SandboxChecker` 在 US-2 是只校验 URL 的简化版，到 US-4 补齐文件/命令/域名完整版。别在早期 user story 就把后面的活干了。

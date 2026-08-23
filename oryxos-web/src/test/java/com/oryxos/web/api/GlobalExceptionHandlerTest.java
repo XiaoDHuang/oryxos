@@ -56,6 +56,6 @@ class GlobalExceptionHandlerTest {
     assertThat(response.getBody())
         .isNotNull()
         .extracting(ApiErrorResponse::getErrorCode, ApiErrorResponse::getMessage)
-        .containsExactly("INTERNAL_ERROR", "Internal server error");
+        .containsExactly("INTERNAL_ERROR", "服务器内部错误");
   }
 }

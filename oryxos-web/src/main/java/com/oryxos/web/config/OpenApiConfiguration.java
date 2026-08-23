@@ -7,7 +7,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * OpenAPI metadata shared by all core REST endpoints.
+ * 所有核心 REST 端点共享的 OpenAPI 元数据.
  *
  * @author OryxOS Contributors
  */
@@ -17,10 +17,6 @@ public class OpenApiConfiguration {
   @Bean
   OpenAPI oryxOsOpenApi(@Value("${info.app.version:1.0.0-SNAPSHOT}") String version) {
     return new OpenAPI()
-        .info(
-            new Info()
-                .title("OryxOS API")
-                .description("Enterprise Agent OS runtime API")
-                .version(version));
+        .info(new Info().title("OryxOS API").description("企业级 Agent OS 运行时 API").version(version));
   }
 }

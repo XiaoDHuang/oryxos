@@ -17,7 +17,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /**
- * Maps controller failures to the stable OryxOS JSON error contract.
+ * 把 controller 故障映射为稳定的 OryxOS JSON 错误契约.
  *
  * @author OryxOS Contributors
  */
@@ -26,7 +26,7 @@ public class GlobalExceptionHandler {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
-  /** Handles malformed or invalid request input. */
+  /** 处理畸形或非法的请求输入. */
   @ExceptionHandler({
     BindException.class,
     ConstraintViolationException.class,
@@ -37,44 +37,44 @@ public class GlobalExceptionHandler {
     ServletRequestBindingException.class
   })
   public ResponseEntity<ApiErrorResponse> handleInvalidRequest(Exception exception) {
-    LOGGER.debug("Invalid HTTP request", exception);
+    LOGGER.debug("非法 HTTP 请求", exception);
     return response(ErrorCode.INVALID_REQUEST);
   }
 
-  /** Handles requests for resources that do not exist. */
+  /** 处理对不存在资源的请求. */
   @ExceptionHandler(NoResourceFoundException.class)
   public ResponseEntity<ApiErrorResponse> handleNotFound(NoResourceFoundException exception) {
-    LOGGER.debug("HTTP resource not found", exception);
+    LOGGER.debug("HTTP 资源不存在", exception);
     return response(ErrorCode.RESOURCE_NOT_FOUND);
   }
 
-  /** Handles HTTP methods that are not supported by the target resource. */
+  /** 处理目标资源不支持的 HTTP 方法. */
   @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
   public ResponseEntity<ApiErrorResponse> handleMethodNotAllowed(
       HttpRequestMethodNotSupportedException exception) {
-    LOGGER.debug("HTTP method not allowed", exception);
+    LOGGER.debug("HTTP 方法不被支持", exception);
     return response(ErrorCode.METHOD_NOT_ALLOWED);
   }
 
-  /** Handles request bodies with an unsupported media type. */
+  /** 处理媒体类型不支持的请求体. */
   @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
   public ResponseEntity<ApiErrorResponse> handleUnsupportedMediaType(
       HttpMediaTypeNotSupportedException exception) {
-    LOGGER.debug("HTTP media type not supported", exception);
+    LOGGER.debug("HTTP 媒体类型不被支持", exception);
     return response(ErrorCode.UNSUPPORTED_MEDIA_TYPE);
   }
 
-  /** Handles failures with an explicit public error code. */
+  /** 处理带显式公开错误码的故障. */
   @ExceptionHandler(OryxException.class)
   public ResponseEntity<ApiErrorResponse> handleOryxException(OryxException exception) {
-    LOGGER.warn("OryxOS request failed with a handled application error");
+    LOGGER.warn("OryxOS 请求以已处理的应用错误失败");
     return response(exception.getErrorCode(), exception.getMessage());
   }
 
-  /** Handles unexpected failures without exposing internal details. */
+  /** 处理意料之外的故障,不暴露内部细节. */
   @ExceptionHandler(Exception.class)
   public ResponseEntity<ApiErrorResponse> handleUnexpectedException(Exception exception) {
-    LOGGER.error("Unexpected HTTP request failure", exception);
+    LOGGER.error("HTTP 请求发生意外故障", exception);
     return response(ErrorCode.INTERNAL_ERROR);
   }
 

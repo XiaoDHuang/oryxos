@@ -10,11 +10,11 @@ import picocli.CommandLine.Model.CommandSpec;
 import picocli.CommandLine.Spec;
 
 /**
- * Lightweight command: creates {@code .oryxos/} workspace without starting Spring.
+ * 轻量命令:创建 {@code .oryxos/} 工作区,不启动 Spring.
  *
  * @author OryxOS Contributors
  */
-@Command(name = "init", description = "Initialize .oryxos workspace in the current directory")
+@Command(name = "init", description = "在当前目录初始化 .oryxos 工作区")
 public class InitCommand implements Callable<Integer> {
 
   @Spec private CommandSpec commandSpec;
@@ -24,7 +24,7 @@ public class InitCommand implements Callable<Integer> {
     PrintWriter out = commandSpec.commandLine().getOut();
     Path root = Path.of(".oryxos");
     if (Files.exists(root)) {
-      out.println(".oryxos already exists — skip");
+      out.println(".oryxos 已存在 —— 跳过");
       return 0;
     }
 
@@ -35,8 +35,7 @@ public class InitCommand implements Callable<Integer> {
     Files.createDirectories(root.resolve("tools"));
     Files.createDirectories(root.resolve("memory"));
 
-    // Placeholder DB file; tables are applied from classpath db/schema.sql on first Spring start
-    // (chat/serve).
+    // 占位 DB 文件;表结构在首次 Spring 启动(chat/serve)时由 classpath 的 db/schema.sql 应用。
     Files.writeString(root.resolve("oryxos.db"), "");
 
     Files.writeString(root.resolve("memory/MEMORY.md"), "# Long-term memory\n\n");
@@ -91,7 +90,7 @@ public class InitCommand implements Callable<Integer> {
             .replace("__NOW__", now);
     Files.writeString(root.resolve("profiles/default.yaml"), defaultProfile);
 
-    out.println("Initialized .oryxos workspace");
+    out.println("已初始化 .oryxos 工作区");
     return 0;
   }
 }

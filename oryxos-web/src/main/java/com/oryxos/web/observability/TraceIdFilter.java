@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
- * Adds a trace identifier to MDC and the HTTP response for request correlation.
+ * 向 MDC 与 HTTP 响应添加追踪标识,用于请求关联.
  *
  * @author OryxOS Contributors
  */

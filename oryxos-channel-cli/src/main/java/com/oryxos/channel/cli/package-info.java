@@ -1,2 +1,2 @@
-/** CLI Channel implementation ({@code oryxos chat}). */
+/** CLI Channel 实现({@code oryxos chat}). */
 package com.oryxos.channel.cli;

@@ -6,11 +6,11 @@ import picocli.CommandLine.Model.CommandSpec;
 import picocli.CommandLine.Spec;
 
 /**
- * Print OryxOS version (no Spring context).
+ * 打印 OryxOS 版本(无 Spring 上下文).
  *
  * @author OryxOS Contributors
  */
-@Command(name = "version", description = "Print OryxOS version")
+@Command(name = "version", description = "打印 OryxOS 版本")
 public class VersionCommand implements Callable<Integer> {
 
   @Spec private CommandSpec commandSpec;

@@ -6,10 +6,9 @@ import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
- * Core-stage Spring MVC conventions shared by all REST controllers.
+ * 所有 REST controller 共享的核心阶段 Spring MVC 约定.
  *
- * <p>The core stage intentionally permits every origin for the versioned API. Authentication and an
- * origin allowlist are extension-stage governance concerns.
+ * <p>核心阶段刻意对带版本的 API 放行所有来源。认证与来源白名单是扩展阶段的治理事项。
  *
  * @author OryxOS Contributors
  */
@@ -18,13 +17,11 @@ public class WebMvcConfiguration implements WebMvcConfigurer {
 
   private static final long CORS_MAX_AGE_SECONDS = 3600L;
 
-  /** Configures the core-stage open CORS policy for API endpoints. */
+  /** 为 API 端点配置核心阶段的开放 CORS 策略. */
   @Override
   @SuppressFBWarnings(
       value = "PERMISSIVE_CORS",
-      justification =
-          "The core-stage API intentionally allows all origins; authentication and origin"
-              + " allowlisting are extension-stage governance features.")
+      justification = "核心阶段 API 刻意放行所有来源;认证与来源白名单是扩展阶段的治理特性。")
   public void addCorsMappings(CorsRegistry registry) {
     registry
         .addMapping("/api/v1/**")
