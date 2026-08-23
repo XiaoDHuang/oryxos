@@ -1,4 +1,4 @@
-﻿# AGENTS.md
+# AGENTS.md
 
 本文件是 OryxOS 仓库面向 **Claude Code / Codex / Cursor** 的统一 Agent 指令（单一事实来源）。内容提炼自 `docs/` 下四份文档（`IndustryResearch.md` 业界调研、`DemandAnalysis.md` 需求分析、`TechnicalSolution.md` 技术方案、`AiProgrammingGuide.md` AI 编程实施指南），四份文档是本项目唯一的事实来源，本文件不重复论证，只提炼成可直接执行的编码约束。**四份文档跟本文件冲突时，以四份文档为准，并回来更新本文件（再经软链同步到 `CLAUDE.md` 等）。**
 
@@ -111,7 +111,7 @@ Provider、Memory、Tool 三个能力供养 ReAct 循环这个引擎，引擎跑
 
 **Profile（YAML，`.oryxos/profiles/*.yaml`）：**
 
-`name`、`description`、`identity`（`agent_name`、`prompt` 或 `prompt_file`）、`provider`（`name`、`model`、`temperature`，可选 `fallback`——核心阶段不实现 fallback 逻辑但字段可以先留）、`tools`、`skills`、`mcp_servers`、`channels`、`bootstrap`、`settings`（`max_iterations` 默认 10、`max_history_turns` 默认 20）、`created_at`/`updated_at`。敏感值（API key）在 YAML 里用 `${ENV_VAR}` 占位，`ConfigLoader` 从环境变量解析，禁止明文写死。
+`name`、`description`、`identity`（`agent_name`、`prompt` 或 `prompt_file`）、`provider`（`name`、`model`、`temperature`，可选 `fallback`——核心阶段不实现 fallback 逻辑但字段可以先留）、`tools`、`skills`、`mcp_servers`、`channels`、`notify_channels`（每项带 `type` 与渠道特定配置如 `url`，供 `NotifyTools` 用，见技术方案 §6.8）、`schedules`（定时配置，见 §8.5）、`bootstrap`、`settings`（`max_iterations` 默认 10、`max_history_turns` 默认 20）、`created_at`/`updated_at`。敏感值（API key）在 YAML 里用 `${ENV_VAR}` 占位，`ConfigLoader` 从环境变量解析，禁止明文写死。
 
 **Session（落 SQLite `sessions` 表）：**
 

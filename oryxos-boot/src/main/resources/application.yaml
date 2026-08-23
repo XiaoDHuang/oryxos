@@ -27,14 +27,16 @@ spring:
     init:
       mode: always
       schema-locations: classpath:db/schema.sql
-  # OpenAI-compatible Provider (DeepSeek / Kimi). Keys from env — never hardcode.
-  ai:
-    openai:
+# Global provider layer: which LLM providers this instance connects to.
+# Keys resolve from env vars only — never hardcode. Model choice belongs to each Profile.
+oryxos:
+  providers:
+    - name: deepseek
       api-key: ${DEEPSEEK_API_KEY:}
       base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
-      chat:
-        options:
-          model: ${DEEPSEEK_MODEL:deepseek-chat}
+    - name: kimi
+      api-key: ${KIMI_API_KEY:}
+      base-url: ${KIMI_BASE_URL:https://api.moonshot.cn}
 
 # Sandbox whitelist keys are fixed by the technical solution.
 file:

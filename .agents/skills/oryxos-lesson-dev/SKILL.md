@@ -63,7 +63,7 @@ $ARGUMENTS
 |---|---|
 | 16 | §3（Provider）、§8.2（Profile）、§9.2（llm_calls） |
 | 17 | §4（ReAct/AgentService/ProfileContext）、§8.3（ContextLoader）、§9.2（tool_invocations） |
-| 18 | §8.4、§8.6（CLI）、§9.2（sessions） |
+| 18 | §8.4（Channel）、§8.7（CLI）、§9.2（sessions） |
 | 19 | §6.8（Notify） |
 | 20 | §6.1~6.6（Tool/MCP） |
 | 22 | §5（Memory） |

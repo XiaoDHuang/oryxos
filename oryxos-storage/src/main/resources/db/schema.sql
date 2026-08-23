@@ -38,6 +38,8 @@ CREATE TABLE IF NOT EXISTS llm_calls (
     total_tokens        INTEGER,
     latency_ms          INTEGER,
     status              TEXT,
+    success             INTEGER NOT NULL,
+    error_message       TEXT,
     started_at          TEXT,
     completed_at        TEXT
 );
