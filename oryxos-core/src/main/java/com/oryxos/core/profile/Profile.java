@@ -5,9 +5,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * An Agent's complete configuration, parsed from {@code .oryxos/profiles/*.yaml}. All fields are
- * created in this lesson; later lessons consume whichever field they own. YAML keys are snake_case
- * and normalized to camelCase by {@link ProfileLoader} before mapping.
+ * 一个 Agent 的完整配置,解析自 {@code .oryxos/profiles/*.yaml}. 所有字段都在本节创建; 后续各节消费各自负责的字段。YAML 键为
+ * snake_case,由 {@link ProfileLoader} 在映射前 归一化为 camelCase。
  *
  * @author OryxOS Contributors
  */
@@ -28,7 +27,7 @@ public record Profile(
     String createdAt,
     String updatedAt) {
 
-  /** Canonical constructor: null collections become empty, missing settings get defaults. */
+  /** 规范构造器:null 集合归一为空集合,缺失的 settings 补上默认值. */
   public Profile {
     tools = tools == null ? List.of() : List.copyOf(tools);
     skills = skills == null ? List.of() : List.copyOf(skills);
@@ -41,7 +40,7 @@ public record Profile(
   }
 
   /**
-   * Identity block: agent name plus an inline prompt or a prompt file (either, not both).
+   * 身份块:agent 名,外加内联 prompt 或 prompt 文件(二选一,不可同时).
    *
    * @author OryxOS Contributors
    */
@@ -49,8 +48,7 @@ public record Profile(
   public record Identity(String agentName, String prompt, String promptFile) {}
 
   /**
-   * Provider selection: which globally-declared provider to call, with which model and temperature.
-   * {@code fallback} is reserved for the extension stage and not implemented.
+   * Provider 选择:调用哪个全局声明的 provider、用哪个模型与温度. {@code fallback} 为扩展阶段预留,尚未实现。
    *
    * @author OryxOS Contributors
    */
@@ -58,20 +56,20 @@ public record Profile(
   public record Provider(String name, String model, Double temperature, String fallback) {}
 
   /**
-   * Runtime knobs. Defaults come from the demand document: maxIterations=10, maxHistoryTurns=20.
+   * 运行时旋钮. 默认值来自需求文档:maxIterations=10,maxHistoryTurns=20。
    *
    * @author OryxOS Contributors
    */
   @JsonIgnoreProperties(ignoreUnknown = true)
   public record Settings(Integer maxIterations, Integer maxHistoryTurns) {
 
-    /** Default ReAct iteration cap when the Profile leaves it unset. */
+    /** Profile 未设置时的默认 ReAct 轮数上限. */
     public static final int DEFAULT_MAX_ITERATIONS = 10;
 
-    /** Default number of recent dialogue turns kept in the session context. */
+    /** 会话上下文中保留的最近对话轮数默认值. */
     public static final int DEFAULT_MAX_HISTORY_TURNS = 20;
 
-    /** Canonical constructor applying documented defaults. */
+    /** 应用文档约定默认值的规范构造器. */
     public Settings {
       if (maxIterations == null) {
         maxIterations = DEFAULT_MAX_ITERATIONS;

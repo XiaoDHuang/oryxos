@@ -3,6 +3,7 @@ package com.oryxos.provider;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.oryxos.core.tool.OryxTool;
+import com.oryxos.core.tool.ToolResult;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -61,6 +62,11 @@ class ToolSchemaAdapterTest {
       @Override
       public String getInputSchema() {
         return schema;
+      }
+
+      @Override
+      public ToolResult execute(String argumentsJson) {
+        return ToolResult.ok(name, "stub");
       }
     };
   }

@@ -6,9 +6,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 /**
- * Audit record of one LLM call, mapped to the {@code llm_calls} table. The table is created by the
- * hand-maintained {@code db/schema.sql} (never by Hibernate auto-migration — SQLite's ALTER TABLE
- * is too weak to evolve schemas safely).
+ * 一次 LLM 调用的审计记录,映射到 {@code llm_calls} 表. 表由手工维护的 {@code db/schema.sql} 创建(绝不由 Hibernate 自动迁移 ——
+ * SQLite 的 ALTER TABLE 太弱,无法 安全演进 schema)。
  *
  * @author OryxOS Contributors
  */
@@ -56,10 +55,10 @@ public class LlmCall {
   @Column(name = "completed_at")
   private String completedAt;
 
-  /** JPA-only constructor. */
+  /** 仅供 JPA 使用的构造器. */
   protected LlmCall() {}
 
-  /** Creates a complete audit record; tokens may be null for failed calls. */
+  /** 创建一条完整审计记录;失败的调用 tokens 可为 null. */
   public LlmCall(
       String callId,
       String sessionId,

@@ -3,8 +3,7 @@ package com.oryxos.storage.audit;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 /**
- * Spring Data access to the {@code llm_calls} audit table. Core stage writes only; query/reporting
- * APIs are extension-stage scope.
+ * {@code llm_calls} 审计表的 Spring Data 访问. 核心阶段只写;查询/报表 API 属于扩展 阶段范围。
  *
  * @author OryxOS Contributors
  */

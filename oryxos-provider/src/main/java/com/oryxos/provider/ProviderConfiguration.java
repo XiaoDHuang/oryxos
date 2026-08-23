@@ -13,10 +13,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * Builds the explicit provider-name → {@link ChatModel} map at startup. Type-scanning the Spring
- * context can never tell deepseek from kimi (same bean type, unreliable bean names), so the map is
- * written down entry by entry — that is the whole point. A declared provider whose credential
- * placeholder resolved to empty is reported and skipped without blocking the rest.
+ * 启动时构建显式的 provider 名 → {@link ChatModel} 映射. 对 Spring 上下文做类型扫描 永远分不清 deepseek 和 kimi(bean
+ * 类型相同、bean 名不可靠),所以映射要逐条写死 —— 这正是全部意义所在。凭据占位符解析为空的已声明 provider 会被报告并跳过,不阻塞 其余 provider。
  *
  * @author OryxOS Contributors
  */
@@ -26,24 +24,21 @@ public class ProviderConfiguration {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ProviderConfiguration.class);
 
-  /** Creates the explicit name → model registry consumed by {@link ProviderService}. */
+  /** 创建供 {@link ProviderService} 消费的显式「名称 → 模型」注册表. */
   @Bean
   @SuppressFBWarnings(
       value = "CRLF_INJECTION_LOGS",
-      justification =
-          "Provider names are CR/LF-sanitized before logging; nothing else user-controlled enters"
-              + " these log lines.")
+      justification = "provider 名在写入日志前做了 CR/LF 清洗;没有其他用户可控内容进入这些日志行。")
   public Map<String, ChatModel> chatModelRegistry(ProviderProperties properties) {
     Map<String, ChatModel> registry = new LinkedHashMap<>();
     for (ProviderProperties.ProviderEntry entry : properties.getProviders()) {
       if (entry.getName() == null || entry.getName().isBlank()) {
-        LOGGER.error("Skipping provider entry with missing name in oryxos.providers");
+        LOGGER.error("跳过 oryxos.providers 中缺少 name 的 provider 条目");
         continue;
       }
       if (entry.getApiKey() == null || entry.getApiKey().isBlank()) {
         LOGGER.error(
-            "Provider '{}' skipped: credential missing — set the environment variable referenced"
-                + " by its api-key in oryxos.providers",
+            "Provider '{}' 被跳过:凭据缺失 —— 请设置其 api-key 在 oryxos.providers 中引用的环境变量",
             sanitize(entry.getName()));
         continue;
       }
@@ -54,11 +49,11 @@ public class ProviderConfiguration {
       registry.put(
           entry.getName(), OpenAiChatModel.builder().openAiApi(apiBuilder.build()).build());
     }
-    LOGGER.info("Registered {} LLM provider(s): {}", registry.size(), registry.keySet());
+    LOGGER.info("已注册 {} 个 LLM provider: {}", registry.size(), registry.keySet());
     return Map.copyOf(registry);
   }
 
-  /** Strips CR/LF from externally-sourced values before they enter log lines. */
+  /** 外部来源的值进入日志行前,先剥掉 CR/LF. */
   private static String sanitize(Object value) {
     return String.valueOf(value).replace('\r', '_').replace('\n', '_');
   }

@@ -17,6 +17,7 @@ import static org.mockito.Mockito.when;
 import com.oryxos.core.profile.Profile;
 import com.oryxos.core.prompt.Prompt;
 import com.oryxos.core.tool.OryxTool;
+import com.oryxos.core.tool.ToolResult;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
@@ -166,6 +167,11 @@ class ProviderServiceTest {
       @Override
       public String getInputSchema() {
         return "{\"type\":\"object\"}";
+      }
+
+      @Override
+      public ToolResult execute(String argumentsJson) {
+        return ToolResult.ok(name, "stub");
       }
     };
   }

@@ -5,9 +5,8 @@ import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * Global provider layer bound from {@code oryxos.providers} in application.yaml: which LLM
- * providers this instance connects to, and where each credential comes from. Model choice belongs
- * to the Profile layer, not here.
+ * 从 application.yaml 的 {@code oryxos.providers} 绑定的全局 provider 层:本实例连接哪些 LLM provider,以及各自凭据从何而来.
+ * 模型选择属于 Profile 层,不在这里。
  *
  * @author OryxOS Contributors
  */
@@ -25,7 +24,7 @@ public class ProviderProperties {
   }
 
   /**
-   * One provider declaration: unique name plus credential/endpoint.
+   * 一条 provider 声明:唯一名称加凭据/端点.
    *
    * @author OryxOS Contributors
    */

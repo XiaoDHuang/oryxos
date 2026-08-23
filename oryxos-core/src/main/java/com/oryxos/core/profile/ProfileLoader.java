@@ -19,9 +19,8 @@ import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
 
 /**
- * Loads every Profile YAML under {@code .oryxos/profiles/} at startup. Broken files are logged and
- * skipped without blocking the rest; a Profile whose {@code provider.name} is absent from the
- * global provider layer is reported and skipped (the single validation rule owned by this lesson).
+ * 启动时加载 {@code .oryxos/profiles/} 下的全部 Profile YAML. 损坏的文件记日志并跳过, 不阻塞其余文件;{@code provider.name}
+ * 不在全局 provider 层中的 Profile 会被报告并跳过(本节拥有的唯一校验规则)。
  *
  * @author OryxOS Contributors
  */
@@ -35,22 +34,19 @@ public class ProfileLoader {
 
   private final ObjectMapper mapper = new ObjectMapper();
 
-  /** Creates a loader that validates profiles against the given global provider names. */
+  /** 创建一个按给定全局 provider 名集合校验 profile 的加载器. */
   public ProfileLoader(Set<String> globalProviderNames) {
     this.globalProviderNames =
         globalProviderNames == null ? Set.of() : Set.copyOf(globalProviderNames);
   }
 
-  /** Loads and validates all profiles in the directory; never throws for broken files. */
+  /** 加载并校验目录下的全部 profile;文件损坏不抛异常. */
   @SuppressFBWarnings(
       value = "CRLF_INJECTION_LOGS",
-      justification =
-          "All externally-sourced values are CR/LF-sanitized before logging; the flagged argument"
-              + " is the trailing Throwable, which SLF4J renders as a stack trace, not a line.")
+      justification = "所有外部来源的值在写入日志前都做了 CR/LF 清洗;被标记的参数是末尾的 Throwable," + "由 SLF4J 渲染为堆栈,而不是单行文本。")
   public List<Profile> loadAll(Path profilesDir) {
     if (profilesDir == null || !Files.isDirectory(profilesDir)) {
-      LOGGER.warn(
-          "Profiles directory {} does not exist; no profiles loaded", sanitize(profilesDir));
+      LOGGER.warn("Profiles 目录 {} 不存在;未加载任何 profile", sanitize(profilesDir));
       return List.of();
     }
     List<Path> files;
@@ -58,11 +54,7 @@ public class ProfileLoader {
       files =
           stream.filter(Files::isRegularFile).filter(ProfileLoader::isYamlFile).sorted().toList();
     } catch (IOException e) {
-      LOGGER.error(
-          "Failed to list profiles directory {}: {}",
-          sanitize(profilesDir),
-          sanitize(e.getMessage()),
-          e);
+      LOGGER.error("列出 profiles 目录 {} 失败: {}", sanitize(profilesDir), sanitize(e.getMessage()), e);
       return List.of();
     }
     List<Profile> profiles = new ArrayList<>();
@@ -70,11 +62,10 @@ public class ProfileLoader {
       try {
         loadOne(file).ifPresent(profiles::add);
       } catch (IOException | RuntimeException e) {
-        LOGGER.error(
-            "Skipping broken profile file {}: {}", sanitize(file), sanitize(e.getMessage()), e);
+        LOGGER.error("跳过损坏的 profile 文件 {}: {}", sanitize(file), sanitize(e.getMessage()), e);
       }
     }
-    LOGGER.info("Loaded {} profile(s) from {}", profiles.size(), sanitize(profilesDir));
+    LOGGER.info("已从 {} 加载 {} 个 profile", profiles.size(), sanitize(profilesDir));
     return List.copyOf(profiles);
   }
 
@@ -84,19 +75,19 @@ public class ProfileLoader {
       raw = new Yaml().load(reader);
     }
     if (raw == null) {
-      LOGGER.error("Skipping empty profile file {}", sanitize(file));
+      LOGGER.error("跳过空的 profile 文件 {}", sanitize(file));
       return Optional.empty();
     }
     Object normalized = resolveAndNormalize(raw);
     Profile profile = mapper.convertValue(normalized, Profile.class);
     if (profile.name() == null || profile.name().isBlank()) {
-      LOGGER.error("Skipping profile file {}: missing required field 'name'", sanitize(file));
+      LOGGER.error("跳过 profile 文件 {}: 缺少必填字段 'name'", sanitize(file));
       return Optional.empty();
     }
     String providerName = profile.provider() == null ? null : profile.provider().name();
     if (providerName == null || !globalProviderNames.contains(providerName)) {
       LOGGER.error(
-          "Skipping profile '{}': provider '{}' is not declared in the global provider layer",
+          "跳过 profile '{}': provider '{}' 未在全局 provider 层声明",
           sanitize(profile.name()),
           sanitize(providerName));
       return Optional.empty();
@@ -105,9 +96,8 @@ public class ProfileLoader {
   }
 
   /**
-   * Recursively resolves {@code ${ENV_VAR}} placeholders against the process environment and
-   * converts snake_case map keys to camelCase so SnakeYAML-produced maps map onto the record. A
-   * placeholder whose variable is unset is left as-is (no new semantics invented).
+   * 递归地对进程环境解析 {@code ${ENV_VAR}} 占位符,并把 snake_case 的 map 键转为 camelCase,使 SnakeYAML 产出的 map 能映射到
+   * record 上. 变量未设置的占位符保持原样 (不发明新语义)。
    */
   private Object resolveAndNormalize(Object node) {
     if (node instanceof Map<?, ?> map) {
@@ -144,7 +134,7 @@ public class ProfileLoader {
 
   private static final String KEY_SEGMENT_SEPARATOR = "_";
 
-  /** Strips CR/LF from externally-sourced values before they enter log lines. */
+  /** 外部来源的值进入日志行前,先剥掉 CR/LF. */
   private static String sanitize(Object value) {
     return String.valueOf(value).replace('\r', '_').replace('\n', '_');
   }

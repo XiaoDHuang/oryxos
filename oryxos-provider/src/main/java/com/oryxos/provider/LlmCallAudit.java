@@ -11,9 +11,7 @@ import org.springframework.ai.chat.metadata.Usage;
 import org.springframework.stereotype.Component;
 
 /**
- * Writes one {@code llm_calls} row per LLM call, on success and on failure alike — a real incident
- * that leaves no trace defeats the auditability selling point. Persistence failure itself is logged
- * and swallowed: auditing must never break the call it observes.
+ * 每次 LLM 调用写一行 {@code llm_calls},成功与失败都写 —— 不留痕的真实故障会摧毁 可审计性这个卖点. 持久化本身失败只记日志并吞掉:审计绝不能弄垮它所观察的调用。
  *
  * @author OryxOS Contributors
  */
@@ -24,17 +22,15 @@ public class LlmCallAudit {
 
   private final LlmCallRepository repository;
 
-  /** Creates the audit writer backed by the given repository. */
+  /** 创建以给定仓库为后盾的审计写入器. */
   public LlmCallAudit(LlmCallRepository repository) {
     this.repository = repository;
   }
 
-  /** Records one call; {@code usage} may be null when the call failed before producing one. */
+  /** 记录一次调用;调用在产出 usage 之前失败时 {@code usage} 可为 null. */
   @SuppressFBWarnings(
       value = "CRLF_INJECTION_LOGS",
-      justification =
-          "sessionId is CR/LF-sanitized before logging; the trailing Throwable is rendered by"
-              + " SLF4J as a stack trace, not a log line.")
+      justification = "sessionId 在写入日志前做了 CR/LF 清洗;末尾的 Throwable 由 SLF4J 渲染为堆栈," + "而不是日志行。")
   public void record(
       String sessionId,
       String provider,
@@ -62,11 +58,11 @@ public class LlmCallAudit {
               completedAt.toString());
       repository.save(call);
     } catch (RuntimeException e) {
-      LOGGER.error("Failed to persist llm_calls audit for session {}", sanitize(sessionId), e);
+      LOGGER.error("会话 {} 的 llm_calls 审计持久化失败", sanitize(sessionId), e);
     }
   }
 
-  /** Strips CR/LF from externally-sourced values before they enter log lines. */
+  /** 外部来源的值进入日志行前,先剥掉 CR/LF. */
   private static String sanitize(Object value) {
     return String.valueOf(value).replace('\r', '_').replace('\n', '_');
   }

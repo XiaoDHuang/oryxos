@@ -26,10 +26,8 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.util.StringUtils;
 
 /**
- * Real-network smoke: proves the configured key, the resolved dependencies and one genuine call all
- * work end to end, and that the success audit actually lands in llm_calls. Tagged {@code
- * integration} so CI never depends on an external API's availability; run manually per
- * quickstart.md once a real key is in place.
+ * 真实网络冒烟:证明配置的 key、解析出的依赖与一次真实调用端到端可用,且成功审计确实 落进 llm_calls. 打上 {@code integration} 标签,使 CI 从不依赖外部
+ * API 的可用性; 真实 key 就位后按 quickstart.md 手动运行。
  *
  * @author OryxOS Contributors
  */
@@ -84,7 +82,7 @@ class ProviderSmokeIT {
   @DisplayName("集成冒烟_真调一次模型且llm_calls多一条success为true")
   void realCall_persistsSuccessAudit() {
     Assumptions.assumeTrue(
-        StringUtils.hasText(System.getenv("DEEPSEEK_API_KEY")), "DEEPSEEK_API_KEY not set");
+        StringUtils.hasText(System.getenv("DEEPSEEK_API_KEY")), "未设置 DEEPSEEK_API_KEY");
     long before = repository.count();
 
     ChatResponse response =

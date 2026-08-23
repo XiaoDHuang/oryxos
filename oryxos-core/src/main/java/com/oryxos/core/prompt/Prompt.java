@@ -5,21 +5,20 @@ import java.util.List;
 import org.springframework.ai.chat.messages.Message;
 
 /**
- * One unit of work handed to the Provider: the messages to send plus the tools available for this
- * turn. Uses Spring AI {@link Message} types directly so the ReAct loop can feed tool results back
- * without a parallel message hierarchy.
+ * 交给 Provider 的一个工作单元:本轮要发送的消息,加上本轮可用的工具. 直接使用 Spring AI 的 {@link Message} 类型,让 ReAct
+ * 循环无需维护平行的消息体系即可把工具结果喂回去。
  *
  * @author OryxOS Contributors
  */
 public record Prompt(List<Message> messages, List<OryxTool> availableTools) {
 
-  /** Canonical constructor normalizing nulls to empty lists. */
+  /** 把 null 归一为空列表的规范构造器. */
   public Prompt {
     messages = messages == null ? List.of() : List.copyOf(messages);
     availableTools = availableTools == null ? List.of() : List.copyOf(availableTools);
   }
 
-  /** Returns the tools available for this turn (courseware-faithful accessor name). */
+  /** 返回本轮可用的工具(访问器名贴合课件). */
   public List<OryxTool> getAvailableTools() {
     return availableTools;
   }

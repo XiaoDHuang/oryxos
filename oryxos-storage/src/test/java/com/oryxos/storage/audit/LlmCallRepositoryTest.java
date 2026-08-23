@@ -36,7 +36,7 @@ class LlmCallRepositoryTest {
   @EnableJpaRepositories("com.oryxos.storage.audit")
   static class TestConfig {
 
-    /** Fresh SQLite file per test class run; the real schema script does the DDL. */
+    /** 每个测试类运行用全新的 SQLite 文件;DDL 由真实 schema 脚本完成. */
     @Bean
     DataSource dataSource() {
       return DataSourceBuilder.create()
@@ -52,8 +52,8 @@ class LlmCallRepositoryTest {
 
   @BeforeEach
   void createSchemaWithRealScript() throws Exception {
-    // The table must come from the hand-maintained script, never from Hibernate auto-DDL,
-    // otherwise a green test could hide a production script/column mismatch.
+    // 表必须来自手工维护的脚本,绝不用 Hibernate 自动 DDL,否则绿灯测试会掩盖
+    // 生产脚本与列的不匹配。
     try (Connection connection = dataSource.getConnection()) {
       ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/schema.sql"));
     }

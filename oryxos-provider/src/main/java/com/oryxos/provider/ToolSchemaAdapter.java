@@ -7,16 +7,15 @@ import org.springframework.ai.tool.definition.ToolDefinition;
 import org.springframework.stereotype.Component;
 
 /**
- * Translates our {@link OryxTool} descriptors into Spring AI {@link ToolDefinition}s. Translation
- * only — the product carries schema, never execution; tool execution belongs to the ToolExecutor
- * (Tool capability lesson).
+ * 把我们的 {@link OryxTool} 描述翻译成 Spring AI 的 {@link ToolDefinition}. 只做翻译 —— 产物携带 schema,绝不携带执行;工具执行属于
+ * ToolExecutor(Tool 能力课)。
  *
  * @author OryxOS Contributors
  */
 @Component
 public class ToolSchemaAdapter {
 
-  /** Converts each tool to a schema-only {@link ToolDefinition}; empty/null in, empty out. */
+  /** 把每个工具转成只载 schema 的 {@link ToolDefinition};入参为空/null 则出参为空. */
   public List<ToolDefinition> toSpringAiTools(List<OryxTool> tools) {
     if (tools == null || tools.isEmpty()) {
       return List.of();

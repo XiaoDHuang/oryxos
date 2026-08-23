@@ -23,6 +23,8 @@ CREATE TABLE IF NOT EXISTS tool_invocations (
     status          TEXT NOT NULL,
     result          TEXT,
     error           TEXT,
+    success         INTEGER NOT NULL,
+    error_message   TEXT,
     started_at      TEXT,
     completed_at    TEXT,
     token_cost      INTEGER
