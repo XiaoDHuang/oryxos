@@ -1,0 +1,107 @@
+package com.oryxos.storage.session;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import com.oryxos.core.session.Session;
+import java.sql.Connection;
+import java.util.UUID;
+import javax.sql.DataSource;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.ai.chat.messages.UserMessage;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.SpringBootConfiguration;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.autoconfigure.domain.EntityScan;
+import org.springframework.boot.jdbc.DataSourceBuilder;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.context.annotation.Bean;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.jdbc.datasource.init.ScriptUtils;
+import org.springframework.test.context.TestPropertySource;
+
+@DataJpaTest
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@TestPropertySource(
+    properties = {
+      "spring.jpa.database-platform=org.hibernate.community.dialect.SQLiteDialect",
+      "spring.jpa.hibernate.ddl-auto=none"
+    })
+class SessionManagerTest {
+
+  @SpringBootConfiguration
+  @EnableAutoConfiguration
+  @EntityScan("com.oryxos.storage")
+  @EnableJpaRepositories("com.oryxos.storage")
+  static class TestConfig {
+
+    /** 每个测试类一份全新 SQLite 库;表结构由真实脚本建. */
+    @Bean
+    DataSource dataSource() {
+      return DataSourceBuilder.create()
+          .driverClassName("org.sqlite.JDBC")
+          .url("jdbc:sqlite:target/test-sessions-" + UUID.randomUUID() + ".db")
+          .build();
+    }
+  }
+
+  @Autowired private SessionRepository repository;
+
+  @Autowired private DataSource dataSource;
+
+  private JpaSessionManager sessionManager;
+
+  @BeforeEach
+  void setUp() throws Exception {
+    try (Connection connection = dataSource.getConnection()) {
+      ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/schema.sql"));
+    }
+    sessionManager = new JpaSessionManager(repository);
+  }
+
+  @Test
+  @DisplayName("同一三元组_历次getOrCreate都是同一个Session")
+  void sameTriple_alwaysSameSession() {
+    Session first = sessionManager.getOrCreate("cli", "wang", "default");
+    Session second = sessionManager.getOrCreate("cli", "wang", "default");
+    assertThat(second.id()).isEqualTo(first.id());
+
+    Session other = sessionManager.getOrCreate("web", "wang", "default");
+    assertThat(other.id()).isNotEqualTo(first.id());
+  }
+
+  @Test
+  @DisplayName("user或profile不同_也是不同会话")
+  void differentUserOrProfile_differentSession() {
+    Session base = sessionManager.getOrCreate("cli", "wang", "default");
+
+    assertThat(sessionManager.getOrCreate("cli", "li", "default").id()).isNotEqualTo(base.id());
+    assertThat(sessionManager.getOrCreate("cli", "wang", "ops").id()).isNotEqualTo(base.id());
+  }
+
+  @Test
+  @DisplayName("id生成只此一处_格式为channel冒号user冒号profile")
+  void idComposedOnlyInsideManager() {
+    Session session = sessionManager.getOrCreate("cli", "wang", "default");
+
+    assertThat(session.id()).isEqualTo("cli:wang:default");
+  }
+
+  @Test
+  @DisplayName("save后按id取回_消息历史完整")
+  void saveThenGet_historyRoundTrips() {
+    Session session = sessionManager.getOrCreate("cli", "wang", "default");
+    session.append(new UserMessage("第一句话"));
+    session.append(new UserMessage("第二句话"));
+    sessionManager.save(session);
+
+    Session reloaded = sessionManager.get("cli:wang:default").orElseThrow();
+
+    assertThat(reloaded.messages()).hasSize(2);
+    assertThat(reloaded.messages().get(0).getText()).isEqualTo("第一句话");
+    assertThat(reloaded.messages().get(1).getText()).isEqualTo("第二句话");
+  }
+}

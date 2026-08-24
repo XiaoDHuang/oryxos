@@ -3,6 +3,7 @@ package com.oryxos.provider;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.model.ChatModel;
@@ -51,6 +52,12 @@ public class ProviderConfiguration {
     }
     LOGGER.info("已注册 {} 个 LLM provider: {}", registry.size(), registry.keySet());
     return Map.copyOf(registry);
+  }
+
+  /** 全局 provider 名集合,供 Profile 加载校验按类型取用(core 不依赖本模块). */
+  @Bean
+  public Set<String> globalProviderNames(Map<String, ChatModel> chatModelRegistry) {
+    return chatModelRegistry.keySet();
   }
 
   /** 外部来源的值进入日志行前,先剥掉 CR/LF. */

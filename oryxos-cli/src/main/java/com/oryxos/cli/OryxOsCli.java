@@ -8,8 +8,9 @@ import picocli.CommandLine.Model.CommandSpec;
 import picocli.CommandLine.Spec;
 
 /**
- * OryxOS CLI 根入口(fat JAR 的 {@code Start-Class}). 轻量命令(init / version)不启动 Spring;LLM 命令(chat / serve
- * / gateway)后续才会启动 Spring。
+ * OryxOS CLI 根入口(fat JAR 的 {@code Start-Class}). 轻量命令(init / status / profile / provider list /
+ * tool list / session list)不启动 Spring 直接读写文件,秒回;重命令(chat / serve / gateway)经 {@link SpringRuntime}
+ * 才拉起 Spring 上下文。
  *
  * @author OryxOS Contributors
  */
@@ -18,7 +19,18 @@ import picocli.CommandLine.Spec;
     description = "OryxOS —— 企业级 Agent OS",
     mixinStandardHelpOptions = true,
     versionProvider = OryxOsCli.OryxOsVersionProvider.class,
-    subcommands = {InitCommand.class, VersionCommand.class})
+    subcommands = {
+      InitCommand.class,
+      StatusCommand.class,
+      ChatCommand.class,
+      ServeCommand.class,
+      GatewayCommand.class,
+      ProfileCommand.class,
+      ProviderCommand.class,
+      ToolCommand.class,
+      SessionCommand.class,
+      VersionCommand.class
+    })
 public class OryxOsCli implements Runnable {
 
   /** 在打包注入版本号之前,与 Maven {@code project.version} 保持同步. */
