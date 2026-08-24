@@ -86,8 +86,17 @@ public class JpaSessionManager implements SessionManager {
             null));
   }
 
-  /** 会话 id 的唯一拼接点(H4④):channel + ":" + user + ":" + profile. */
+  /**
+   * 会话 id 的唯一拼接点(H4④):channel + ":" + user + ":" + profile. 分量禁含冒号—— 否则 (a:b,c,d) 与 (a,b:c,d)
+   * 会拼出同一个 id,幂等性形同虚设。
+   */
   private static String composeId(String channel, String user, String profileName) {
+    for (String component : new String[] {channel, user, profileName}) {
+      if (component == null || component.isBlank() || component.contains(":")) {
+        throw new IllegalArgumentException(
+            "会话三元组分量不能为空或含冒号: channel=" + channel + ", user=" + user + ", profile=" + profileName);
+      }
+    }
     return channel + ":" + user + ":" + profileName;
   }
 
@@ -185,7 +194,12 @@ public class JpaSessionManager implements SessionManager {
                       (String) entry.get("id"), (String) entry.get("name"), content)))
           .build();
     }
-    return new UserMessage(content);
+    if ("user".equals(role)) {
+      return new UserMessage(content);
+    }
+    // system 消息按设计不进 Session(PromptBuilder 每轮现拼);遇到未知角色必须响亮失败,
+    // 静默吞成 UserMessage 会把脏数据伪装成正常历史。
+    throw new IllegalStateException("会话历史含未知角色: " + role);
   }
 
   private static List<Map<String, Object>> toToolCallEntries(

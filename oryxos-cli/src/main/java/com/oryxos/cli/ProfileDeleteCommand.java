@@ -14,7 +14,7 @@ import picocli.CommandLine.Spec;
  *
  * @author OryxOS Contributors
  */
-@Command(name = "delete", description = "删除指定 Profile")
+@Command(mixinStandardHelpOptions = true, name = "delete", description = "删除指定 Profile")
 public class ProfileDeleteCommand implements Runnable {
 
   @Option(names = "--name", required = true, description = "Profile 名")

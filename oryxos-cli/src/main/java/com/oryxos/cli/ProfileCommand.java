@@ -8,6 +8,7 @@ import picocli.CommandLine.Command;
  * @author OryxOS Contributors
  */
 @Command(
+    mixinStandardHelpOptions = true,
     name = "profile",
     description = "Profile 管理:list / show / create / delete",
     subcommands = {

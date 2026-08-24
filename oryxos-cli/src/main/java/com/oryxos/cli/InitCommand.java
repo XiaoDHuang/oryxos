@@ -14,7 +14,7 @@ import picocli.CommandLine.Spec;
  *
  * @author OryxOS Contributors
  */
-@Command(name = "init", description = "在当前目录初始化 .oryxos 工作区")
+@Command(mixinStandardHelpOptions = true, name = "init", description = "在当前目录初始化 .oryxos 工作区")
 public class InitCommand implements Callable<Integer> {
 
   @Spec private CommandSpec commandSpec;

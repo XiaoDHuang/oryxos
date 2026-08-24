@@ -19,7 +19,10 @@ import picocli.CommandLine.Spec;
  *
  * @author OryxOS Contributors
  */
-@Command(name = "list", description = "列出各 Profile 引用到的 LLM provider")
+@Command(
+    mixinStandardHelpOptions = true,
+    name = "list",
+    description = "列出各 Profile 引用到的 LLM provider")
 public class ProviderListCommand implements Runnable {
 
   @Spec private CommandSpec commandSpec;

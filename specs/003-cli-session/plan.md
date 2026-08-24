@@ -13,12 +13,12 @@
 **Language/Version**: Java 21
 **Primary Dependencies**: Picocli(已在 cli 模块,纯 Picocli 不带 Spring starter)、Spring Boot 3.5.16、Spring Data JPA + SQLite、Jackson(messages_json 序列化)、第 16/17 节交付物
 **Storage**: `sessions` 表(schema.sql 已有,含 context_state 列,不动表结构);messages_json 整列 JSON
-**Testing**: JUnit 5 + Mockito;`SessionManagerTest`(SQLite 临时库+真实脚本)、`SessionRepositoryTest`(序列化回读/重启重查);命令行为属人工清单
+**Testing**: JUnit 5 + Mockito;`SessionManagerTest`(SQLite 临时库+真实脚本)、`SessionRepositoryTest`(序列化回读/重启重查)、`OryxOsCliHelpTest`(12 叶子帮助)、`ChatCommandTest`(未知 Profile 无孤儿会话);真实交互与重命令启动日志保留人工清单
 **Target Platform**: 单体 fat JAR,`java -jar` 驱动 CLI
 **Project Type**: 多模块 Maven 功能切片
-**Performance Goals**: 轻命令亚秒级(不起 Spring)
+**Performance Goals**: 轻命令秒回(不启动 Spring;fat JAR 冷启动含 JVM 成本,实测约 2s,可接受)
 **Constraints**: session_id 只在 SessionManager 内拼接;CLI 无 Agent 逻辑;表结构手工脚本
-**Scale/Scope**: cli 12 命令类、channel-cli 1 类、storage 3 类、core 装配 1 类、boot 启动类改造
+**Scale/Scope**: cli 12 个叶子操作对应命令类 + 4 个分组父命令、channel-cli 1 类、storage 3 类、core 装配 1 类、boot 启动类改造
 
 ## Constitution Check
 
@@ -26,24 +26,24 @@
 
 | 原则 | 判定 |
 |---|---|
-| I 自实现 ReAct | ✅ 本节不接循环,只接入 |
-| II Spring AI 只用一半 | ✅ 不涉 |
-| III 同步阻塞 | ✅ 无异步 |
-| IV OryxTool 抽象 | ✅ 工具表沿用,ToolRegistry 归 20 节不抢跑 |
-| V Spring MVC | ✅ serve 起 MVC 运行时,无 WebFlux |
-| VI Sandbox 白名单 | ✅ 不涉(24 节) |
-| VII SQLite+审计落库 | ✅ sessions 手工脚本已有;`SessionManager` 持久化升级正如 AGENTS.md「US-2 内存版→US-5 SQLite」的预定路径 |
-| VIII 安全合规 | ✅ 无明文;日志消毒沿用 |
+| I 自实现 ReAct 循环 | ✅ 本节只接入既有 `ReActLoop`,不让出循环控制权 |
+| II Spring AI 仅做协议与 Schema | ✅ CLI 不启用框架自动 tool 执行或 eager Provider 装配 |
+| III Provider 显式映射 | ✅ 复用 `ProviderConfiguration` 的显式 name → ChatModel 注册表 |
+| IV 配置即 Agent,上下文非 Tool | ✅ CLI 只按 Profile 名选择 Agent;上下文与工具注册边界不变 |
+| V 审计 Day One 落库 | ✅ 复用既有 llm_calls/tool_invocations 审计;本节新增 sessions 持久化 |
+| VI 安全与数据边界 | ✅ 无明文密钥、无遥测;外部值进入日志前清洗 |
+| VII 同步执行+虚拟线程+MVC | ✅ chat/serve/gateway 同步阻塞,无 Reactor/WebFlux/异步编排 |
+| VIII 实例无状态,状态外置 | ✅ Session 从内存占位升级为 SQLite,JPA 不做自动迁移 |
 
 ## 关键设计决策(详见 research.md;D1~D4 停点确认)
 
 - **D1 实体命名 `SessionEntity`**(storage):core 已有运行时 `Session`(17 节),同名两类必混淆;课件只要求"sessions 表 JPA 实体",未给类名字面量。
 - **D2 `SessionManager`(17 节 core 接口)扩展**:加 `getOrCreate(channel, user, profileName)` 与 `get(sessionId)`——17 节已预告本节完整化,课件明列 SessionManager 为本节交付物。实现侧:`JpaSessionManager`(storage)承担持久化;**删除 17 节的 `InMemorySessionManager`**(不留死代码,其唯一使命是 17 节占位)。
-- **D3 id 拼接格式**:`channel + ":" + user + ":" + profileName`,只在 `JpaSessionManager` 内部(H4④)。可读、确定、幂等。
+- **D3 id 拼接格式**:`channel + ":" + user + ":" + profileName`,只在 `JpaSessionManager` 内部(H4④);三个分量必须非空且禁止冒号,避免分隔符碰撞。可读、确定、幂等。
 - **D4 引擎装配 `CoreEngineConfiguration`**(core,`@Configuration`):产出 ProfileLoader/ProfileRegistry/ContextLoader/PromptBuilder/ReActLoop/ToolExecutor(空工具表,20 节填)/AgentService/SessionManager(JpaSessionManager 在 storage 已是 @Component)等 Bean;重命令经它拉起引擎。属基础设施,非业务对外概念。
 - **D5 轻重分流落法**:仅 `chat`/`serve`/`gateway` 为重命令(起 Spring);`init`/`status`/`profile *`/`provider list`/`tool list`/`session list` 全轻——provider list 与 tool list 按课件"要不要跑引擎"标准走文件级实现(扫 profiles/*.yaml 汇总),session list 直连 SQLite JDBC,均秒回。
 - **D6 serve/gateway 本节形态**:serve 起 Web 运行时(REST 业务端点 26 节);gateway 起非 Web 守护骨架(日志提示核心阶段仅 CLI 通道)。
-- **D7 messages_json 格式**:`[{role, content, toolCalls?}]`;回读按 role 重建 UserMessage/AssistantMessage(builder 带 toolCalls,已核实存在)/ToolResponseMessage/SystemMessage。
+- **D7 messages_json 格式**:`[{role, content, toolCalls?}]`;回读按 role 重建 UserMessage/AssistantMessage(builder 带 toolCalls,已核实存在)/ToolResponseMessage;SystemMessage 由 PromptBuilder 每轮现拼、不进 Session,未知角色响亮失败。
 - **D8 `OryxOsApplication` 显式加 `@EnableJpaRepositories("com.oryxos.storage")` + `@EntityScan("com.oryxos.storage")`**(课件约定;com.oryxos 包下默认虽能扫到,显式声明防包结构调整后静默翻车)。
 - **D9 工作区定位**:命令以当前目录 `.oryxos/` 为准;未初始化给清晰报错("请先 oryxos init"),不抛栈。
 

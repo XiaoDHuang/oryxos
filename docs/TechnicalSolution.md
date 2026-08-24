@@ -600,7 +600,7 @@ session list
 
 ## 10. 项目工程结构
 
-OryxOS 是 Maven 多模块项目，由 9 个模块组成：
+OryxOS 核心阶段以 9 个 Maven 模块为默认工程基线：
 
 | 模块名 | 职责 |
 |--------|------|
@@ -614,7 +614,7 @@ OryxOS 是 Maven 多模块项目，由 9 个模块组成：
 | `oryxos-cli` | 命令行入口：Picocli 主入口、12 个子命令、`ConfigLoader` |
 | `oryxos-boot` | Spring Boot 启动模块：主类、自动配置、依赖聚合 |
 
-模块之间通过接口解耦。扩展阶段加新 Channel 或新 Tool 实现只加新模块不改 core，所有 Channel 模块底层都调 `oryxos-web` 的 Agent 接口。
+模块之间通过接口解耦。模块边界允许随经过验证的能力域演进，但任何新增、删除、改名或职责迁移都必须先在对应 feature plan 中说明必要性、获得用户显式批准，并在实现前同步本节与 `AGENTS.md`；否则继续保持上述 9 模块。扩展阶段新增 Channel 或 Tool 时优先通过下游适配模块扩展、保持 core 契约稳定，所有 Channel 底层都复用同一 Agent 入口。
 
 打包：
 

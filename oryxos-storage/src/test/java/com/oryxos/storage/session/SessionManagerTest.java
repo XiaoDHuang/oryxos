@@ -91,6 +91,15 @@ class SessionManagerTest {
   }
 
   @Test
+  @DisplayName("分量含冒号_直接拒绝防碰撞")
+  void componentWithColon_rejected() {
+    org.assertj.core.api.Assertions.assertThatThrownBy(
+            () -> sessionManager.getOrCreate("cl:i", "wang", "default"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("冒号");
+  }
+
+  @Test
   @DisplayName("save后按id取回_消息历史完整")
   void saveThenGet_historyRoundTrips() {
     Session session = sessionManager.getOrCreate("cli", "wang", "default");

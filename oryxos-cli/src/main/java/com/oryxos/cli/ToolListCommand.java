@@ -18,7 +18,7 @@ import picocli.CommandLine.Spec;
  *
  * @author OryxOS Contributors
  */
-@Command(name = "list", description = "列出指定 Profile 声明的工具")
+@Command(mixinStandardHelpOptions = true, name = "list", description = "列出指定 Profile 声明的工具")
 public class ToolListCommand implements Runnable {
 
   @Option(names = "--profile", defaultValue = "default", description = "Profile 名")

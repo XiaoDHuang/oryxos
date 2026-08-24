@@ -19,7 +19,7 @@ import picocli.CommandLine.Spec;
  *
  * @author OryxOS Contributors
  */
-@Command(name = "status", description = "查看 OryxOS 工作区状态")
+@Command(mixinStandardHelpOptions = true, name = "status", description = "查看 OryxOS 工作区状态")
 public class StatusCommand implements Runnable {
 
   @Spec private CommandSpec commandSpec;

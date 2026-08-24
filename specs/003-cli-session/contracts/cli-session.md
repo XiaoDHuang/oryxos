@@ -6,7 +6,7 @@
 Session getOrCreate(String channel, String user, String profileName);
 ```
 
-- 幂等:同三元组永远返回同一 sessionId 的 Session;id 形如 `cli:wang:default`,拼接只在实现内部。
+- 幂等:同一合法三元组永远返回同一 sessionId 的 Session;id 形如 `cli:wang:default`,拼接只在实现内部。channel/user/profile 任一分量为空白或含冒号时必须在落库前拒绝。
 - 库中已存在 → 回读重建(消息完整);不存在 → 新建 active 会话并立即落库。
 
 ```java

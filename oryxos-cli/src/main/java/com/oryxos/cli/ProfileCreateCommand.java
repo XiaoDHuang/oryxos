@@ -15,7 +15,7 @@ import picocli.CommandLine.Spec;
  *
  * @author OryxOS Contributors
  */
-@Command(name = "create", description = "新建一个 Profile 模板")
+@Command(mixinStandardHelpOptions = true, name = "create", description = "新建一个 Profile 模板")
 public class ProfileCreateCommand implements Runnable {
 
   @Option(names = "--name", required = true, description = "Profile 名")

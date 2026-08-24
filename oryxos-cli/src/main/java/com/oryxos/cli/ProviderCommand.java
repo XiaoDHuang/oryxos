@@ -8,6 +8,7 @@ import picocli.CommandLine.Command;
  * @author OryxOS Contributors
  */
 @Command(
+    mixinStandardHelpOptions = true,
     name = "provider",
     description = "LLM provider 查看:list",
     subcommands = {ProviderListCommand.class})

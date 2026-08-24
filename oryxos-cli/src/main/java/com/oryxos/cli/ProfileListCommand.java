@@ -14,7 +14,7 @@ import picocli.CommandLine.Spec;
  *
  * @author OryxOS Contributors
  */
-@Command(name = "list", description = "列出全部 Profile")
+@Command(mixinStandardHelpOptions = true, name = "list", description = "列出全部 Profile")
 public class ProfileListCommand implements Runnable {
 
   @Spec private CommandSpec commandSpec;

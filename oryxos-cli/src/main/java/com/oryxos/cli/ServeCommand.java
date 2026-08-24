@@ -12,7 +12,10 @@ import picocli.CommandLine.Spec;
  *
  * @author OryxOS Contributors
  */
-@Command(name = "serve", description = "启动 Web Service(REST API 服务,常驻)")
+@Command(
+    mixinStandardHelpOptions = true,
+    name = "serve",
+    description = "启动 Web Service(REST API 服务,常驻)")
 public class ServeCommand implements Runnable {
 
   @Option(names = "--port", defaultValue = "8080", description = "监听端口")

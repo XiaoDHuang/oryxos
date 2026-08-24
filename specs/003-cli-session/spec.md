@@ -4,7 +4,7 @@
 
 **Created**: 2026-08-23
 
-**Status**: Draft
+**Status**: In Review
 
 **Input**: User description: "第18节需求:CLI 命令行入口——OryxOS 的本地交互门面与会话持久化地基。CLI 是消息进出的门;命令按轻重分流;会话按三元组幂等持久化,id 拼接只此一处。"
 
@@ -51,7 +51,7 @@
 
 **Why this priority**: 启动速度是 CLI 的体感质量;扫描范围是重命令的真实地雷,不显式声明会在启动期炸。
 
-**Independent Test**(人工,课件明确不自动化):`profile list` 秒回;`chat` 启动日志中仓储接口数大于 0;12 个命令 `--help` 正常。
+**Independent Test**:`OryxOsCliHelpTest` 自动验证 12 个叶子操作 `--help` 退出码 0;人工验证 `profile list` 秒回及 `chat` 启动日志中仓储接口数大于 0。
 
 **Acceptance Scenarios**:
 
@@ -71,11 +71,11 @@
 
 ### Functional Requirements
 
-- **FR-001**: 单一程序入口 MUST 挂载 12 个子命令(init、status、chat、serve、gateway、profile list/create/show/delete、provider list、tool list、session list),每个子命令一个命令类;参数解析/帮助/报错 MUST 交给命令行框架, MUST NOT 自写 args 解析。
+- **FR-001**: 单一程序入口 MUST 挂载 12 个叶子操作(init、status、chat、serve、gateway、profile list/create/show/delete、provider list、tool list、session list),每个叶子操作一个命令类;参数解析/帮助/报错 MUST 交给命令行框架, MUST NOT 自写 args 解析。统计口径:12 个叶子操作;profile/provider/tool/session 四个父命令与兼容命令 version 不计入。
 - **FR-002**: 命令 MUST 按轻重分流:不调模型的命令 MUST NOT 启动运行时上下文(直接文件操作);跑引擎的命令才启动,且启动类 MUST 显式声明 JPA 仓储与实体的扫描包。
 - **FR-003**: `chat` MUST 实现读输入 → 交引擎 → 打印回复的薄壳交互,`/quit` 退出;MUST NOT 内含拼 prompt、调模型、执行工具等任何 Agent 逻辑。
 - **FR-004**: chat/serve/gateway 三种模式 MUST 共享同一份 Profile 配置与同一套会话存储。
-- **FR-005**: 会话 MUST 按 channel+user+profile 三元组唯一确定;会话标识的拼接 MUST 只发生在会话管理器内部,入口只提供三元组。
+- **FR-005**: 会话 MUST 按 channel+user+profile 三元组唯一确定;会话标识的拼接 MUST 只发生在会话管理器内部,入口只提供三元组。三个分量 MUST 非空且不得包含分隔符冒号,非法输入必须在落库前拒绝。
 - **FR-006**: 会话管理器 MUST 对外提供 getOrCreate(channel, user, profileName)(幂等)、get(sessionId)、save(session) 三个方法;对话历史 MUST 整体序列化为 JSON 存单一列;表结构 MUST 由手工脚本维护。
 - **FR-007**: 会话历史回读 MUST 完整还原消息角色与内容(用户/模型/工具结果),模型响应携带的工具调用意图不丢失。
 
@@ -88,10 +88,10 @@
 
 ### Measurable Outcomes
 
-- **SC-001**: 同一三元组 getOrCreate 幂等率 100%;任一维度不同必然产生不同会话——自动化回归钉死。
+- **SC-001**: 对合法三元组,同一三元组 getOrCreate 幂等率 100%,任一维度不同必然产生不同会话;空白或含冒号的分量 100% 在落库前拒绝——自动化回归钉死。
 - **SC-002**: 持久化→"重启"→回读链路消息零丢失,自动化回归钉死。
-- **SC-003**: 轻命令本地执行亚秒级返回(不启动运行时);重命令启动日志仓储接口数 > 0。
-- **SC-004**: 12 个子命令全部可执行且 `--help` 正常(人工清单)。
+- **SC-003**: 轻命令不启动运行时,秒级返回(课件口径「秒回」;fat JAR 冷启动含 JVM 启动成本,实测约 2s,原生镜像压缩属扩展阶段,不在本节优化);重命令启动日志仓储接口数 > 0。
+- **SC-004**: 12 个叶子操作全部可执行且 `--help` 正常(退出码 0,自动化测试 `OryxOsCliHelpTest` 钉死);父命令与 version 不计入。
 - **SC-005**: 自动化验收套件不碰真实网络与密钥,秒级全绿。
 
 ## Assumptions

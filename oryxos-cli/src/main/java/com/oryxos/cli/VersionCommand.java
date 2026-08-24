@@ -10,7 +10,7 @@ import picocli.CommandLine.Spec;
  *
  * @author OryxOS Contributors
  */
-@Command(name = "version", description = "打印 OryxOS 版本")
+@Command(mixinStandardHelpOptions = true, name = "version", description = "打印 OryxOS 版本")
 public class VersionCommand implements Callable<Integer> {
 
   @Spec private CommandSpec commandSpec;

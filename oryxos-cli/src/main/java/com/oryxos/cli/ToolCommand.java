@@ -8,6 +8,7 @@ import picocli.CommandLine.Command;
  * @author OryxOS Contributors
  */
 @Command(
+    mixinStandardHelpOptions = true,
     name = "tool",
     description = "工具查看:list",
     subcommands = {ToolListCommand.class})

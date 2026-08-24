@@ -4,7 +4,7 @@
 
 **Prerequisites**: plan.md、spec.md、research.md、data-model.md、contracts/cli-session.md
 
-**Tests**: harness 先行——`SessionManagerTest`/`SessionRepositoryTest` 先于存储实现;命令行为属人工清单(课件明确不自动化)。
+**Tests**: harness 先行——`SessionManagerTest`/`SessionRepositoryTest` 覆盖存储;`OryxOsCliHelpTest`/`ChatCommandTest` 覆盖可自动化的 CLI 契约;真实交互与重命令启动日志保留人工清单。
 
 ## Phase 1: Setup(类型与表就绪)
 
@@ -37,16 +37,25 @@
 **Independent Test**(人工):轻命令秒回;重命令启动日志仓储接口数 >0;12 命令 --help 正常
 
 - [X] T011 [P] [US3] 建轻命令 StatusCommand.java(工作区/Profile 数/会话数)
-- [X] T012 [P] [US3] 建轻命令 profile 组 oryxos-cli/src/main/java/com/oryxos/cli/profile/:ProfileListCommand/ProfileShowCommand/ProfileCreateCommand(建模板 YAML)/ProfileDeleteCommand(各 @Command,父命令 `profile`)
+- [X] T012 [P] [US3] 在 oryxos-cli/src/main/java/com/oryxos/cli/ 建轻命令 profile 组:ProfileListCommand/ProfileShowCommand/ProfileCreateCommand(建模板 YAML)/ProfileDeleteCommand(各 @Command,父命令 `ProfileCommand`)
 - [X] T013 [P] [US3] 建轻命令 ProviderListCommand.java(扫 profiles YAML 汇总 provider 名)与 ToolListCommand.java(列 `--profile` 声明的 tools);**实施期修正:三个 `list` 子命令撞名(Picocli DuplicateNameException,冒烟抓到),补 ProviderCommand/ToolCommand/SessionCommand 三个父命令承载**
 - [X] T014 [P] [US3] 建轻命令 SessionListCommand.java(直连 `.oryxos/oryxos.db` JDBC 读 sessions 表列 id/profile/channel/status/last_active_at)
 - [X] T015 [P] [US3] 建重命令 ServeCommand.java(@Command `serve`,`--port` 默认 8080,起 Web 运行时)与 GatewayCommand.java(起非 Web 守护骨架,日志说明核心阶段仅 CLI 通道);**实施期修正:两者均需 CountDownLatch 驻留主线程,否则命令返回后 OryxOsCli.main 的 System.exit 杀掉容器(冒烟抓到)**
-- [X] T016 [US3] 改造 OryxOsCli.java:注册全部 12 子命令(profile/provider/tool/session 均挂父命令),usage 输出更新
+- [X] T016 [US3] 改造 OryxOsCli.java:注册全部 12 个叶子操作(profile/provider/tool/session 均挂父命令),usage 输出更新
 
 ## Phase 6: Polish & 收尾
 
-- [X] T017 全量验证:`mvn clean verify -Ddependency-check.skip=true` 全绿;16/17 节测试全回归;`grep -rn "sk-" oryxos-*/src` 无明文;`grep -rnE "CompletableFuture|Mono<|Flux<" oryxos-cli oryxos-channel-cli oryxos-storage/src/main` 为空
+- [X] T017 快速门禁:`mvn clean verify -Ddependency-check.skip=true` 全绿;16/17 节测试全回归;`grep -rn "sk-" oryxos-*/src` 无明文;`grep -rnE "CompletableFuture|Mono<|Flux<" oryxos-cli oryxos-channel-cli oryxos-storage/src/main` 为空。此项只代表本地快速验证,不替代封板所需完整门禁。
 - [X] T018 冒烟(人工引导项,不阻断):`java -jar oryxos-boot/target/*.jar init` → `profile list` 秒回 → `session list` 空表正常 → `chat --help` 正常
+
+## Phase 7: 评审补救与封板
+
+- [X] T019 [US3] 为 12 个叶子命令及父命令补 `mixinStandardHelpOptions=true`,新增 `oryxos-cli/src/test/java/com/oryxos/cli/OryxOsCliHelpTest.java`,钉死 `--help` 退出码 0 与 Usage 输出
+- [X] T020 [US1] `JpaSessionManager` 校验三元组分量非空且不含冒号,补分隔符碰撞回归;反序列化未知消息角色改为 fail-loud
+- [X] T021 [US2] 未知 Profile 必须在创建 Session 和进入交互前返回清晰错误,并补 `ChatCommandTest` 无孤儿会话自动化回归
+- [X] T022 同步 spec/plan/research/checklist:12 个统计口径统一为叶子操作;轻命令性能口径改为约 2 秒可接受;SystemMessage 明确不进 Session;Spec 状态进入评审
+- [ ] T023 运行不跳过任何插件的 `mvn verify`,确认 Spotless/P3C/Checkstyle/SpotBugs/FindSecBugs/OWASP Dependency-Check 全绿
+- [ ] T024 运行 `/speckit-analyze` 最终复审,确认无 CRITICAL/HIGH 漂移后提交 018 封板稳定点
 
 ## Dependencies
 
@@ -63,7 +72,8 @@
 1. 存储地基先绿(T006~T008,harness 核心);
 2. 装配与 chat 入口(T005、T009/T010);
 3. 命令组收尾(T011~T016);
-4. T017 硬门禁。
+4. T017 快速门禁;
+5. T019~T024 评审补救、完整门禁与封板。
 
 ## 注意(语法禁区)
 

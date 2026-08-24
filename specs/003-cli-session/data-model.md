@@ -6,7 +6,7 @@
 
 | 列 | 类型 | 说明 |
 |---|---|---|
-| `session_id` | TEXT PK | `channel:user:profile` 拼接,只在 JpaSessionManager 内生成 |
+| `session_id` | TEXT PK | `channel:user:profile` 拼接,只在 JpaSessionManager 内生成;三个分量非空且禁止冒号 |
 | `profile_name` | TEXT NOT NULL | 关联 Profile |
 | `channel` | TEXT | cli / web / scheduler |
 | `user_id` | TEXT | 用户标识 |

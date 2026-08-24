@@ -5,7 +5,7 @@
 跨工具目录与 Skills 说明见 [`.agents/README.md`](.agents/README.md)。
 ## 项目现状
 
-Maven 9 模块骨架已初始化，可 `mvn clean package` 产出 `oryxos-boot` fat JAR；`oryxos init`（Picocli）可创建 `.oryxos/` 工作区。业务能力（ReAct / Provider / Memory / Tool / Web）尚未实现，按 Spec-Kit User Story（US-1 → US-5）推进。不要擅自增减模块或改七条关键技术决策。
+Maven 9 模块骨架已初始化，可 `mvn clean package` 产出 `oryxos-boot` fat JAR；Provider、ReAct、CLI/Session 已实现，当前从第 19 节继续推进 Notify、Tool、Memory、Sandbox 与 Web。9 模块是核心阶段默认基线；任何模块新增、删除、改名或职责迁移都必须先写入对应 feature plan、获得用户显式批准，并同步本文件与 `docs/TechnicalSolution.md` 后才能实施。
 
 ## 一句话理解 OryxOS
 
@@ -24,14 +24,14 @@ OryxOS 的交付分两段，写任何代码前先确认自己在哪一段：
 
 ## 两条容易架构错方向的项目底线
 
-- **Agent 是"配置"出来的，不是"写代码"写出来的。** 一个新 Agent = 一份 Profile YAML，绝不是一个新 Java 类/ 新模块。看到"加一个客服 Agent""加一个运维 Agent"这类需求，正确做法是新增/编辑 Profile，而不是写 `CustomerServiceAgent.java`。业务方落地真实场景靠的是配 Profile + 写 Plugin Tool + 调 Web Service，OryxOS 本身不绑定任何具体业务。
+- **Agent 是"配置"出来的，不是"写代码"写出来的。** `Profile` 是统一运行时契约，核心阶段由 Profile YAML 加载；未来若引入 `AGENT.md`/Agent 目录作为作者与分发格式，也必须派生到同一 `Profile`，不得形成第二套运行时模型。看到"加一个客服 Agent""加一个运维 Agent"这类需求，绝不能写 `CustomerServiceAgent.java`；正确做法是新增声明式配置与上下文资产。
 - **OryxOS 做运行时，不做编排。** 不做可视化 workflow 编排、不做复杂任务分解、不做多 Agent 显式协作。需要复杂 workflow 的场景，是让 Dify 之类的编排平台跑在 OryxOS 之上（把 OryxOS 当后端），而不是在 OryxOS 里造一个编排引擎。ReAct 循环靠 LLM 在运行时动态决定下一步，本身就替代了预先编排。
 
 ## 技术栈与工程结构
 
 JDK 21 + Spring Boot 3.x + Spring AI / Spring AI Alibaba + 自实现 ReAct loop + SQLite (Spring Data JPA) + Picocli 命令行 + SnakeYAML + MCP Java SDK + Logback/SLF4J。单体应用，可执行 fat JAR，单二进制部署。
 
-**Maven 多模块，固定 9 个模块**，不要拆多也不要合并少：
+**Maven 多模块，当前核心阶段默认保持以下 9 个模块**。未经 feature plan 论证、用户批准和文档同步，不要拆多、合并或迁移职责：
 
 | 模块 | 对应能力 | 职责 |
 |---|---|---|
@@ -166,7 +166,7 @@ Provider、Memory、Tool 三个能力供养 ReAct 循环这个引擎，引擎跑
 
 - [ ] 有没有启用 Spring AI 的自动 tool 执行？必须禁用。
 - [ ] Provider 的 name 映射是不是靠类型扫描猜的？必须显式映射表。
-- [ ] Tool 相关代码是不是又拆成了 builtin/skill/mcp 好几个模块？必须合并进 `oryxos-tool` 一个模块。
+- [ ] Tool 相关代码是不是未经批准又拆成了 builtin/skill/mcp 多个模块？当前基线必须合并进 `oryxos-tool`；未来拆分也必须走模块演进审批流程。
 - [ ] `SkillLoader`/`SKILL.md` 加载逻辑是不是被放进了 Tool 模块？`SKILL.md` 是 prompt 输入不是 Tool，归 `oryxos-core` 的 `ContextLoader`，跟 Bootstrap 文件同类处理。
 - [ ] `tool_invocations`、`llm_calls` 是不是只写了日志没落库？核心阶段必须写 SQLite 表。
 - [ ] 有没有用到 `SecurityManager`？禁止，用 Path/Pattern 白名单代替。
@@ -222,7 +222,7 @@ OryxOS 作为开源项目需要一个独立主页作为对外门面，讲清楚�
 
 主体开发用 **Spec-Kit**（constitution → specify → plan → tasks → implement），按 5 个 user story 组织，依赖顺序 `US-1 对接LLM → US-2 ReAct → (US-3 Memory ∥ US-4 Plugin Tool) → US-5 Web Service`，对应需求/技术方案定的 4 周 / 每周 3 小时 / 合计 12 小时节奏，每周末有可演示成果。每个 user story 完成后跑一次 `/speckit.analyze` 检查漂移（不能省略），并 **git commit 标记该 user story 完成**，方便随时回退到稳定状态。
 
-Constitution（`.specify/memory/constitution.md`）的非协商原则，实质就是本文件「七个关键技术决策」外加几条项目级底线（JDK 21 + Spring Boot 单体、五大能力优先支撑模块次之、Plugin Tool 三档主推 SKILL.md+MCP、跑通优先于完美）。**不允许 AI agent 自行修改 constitution**；发现某条原则不对，停下来跟用户讨论。Spec-Kit 产物（`constitution.md`、`spec.md`、`plan.md`）主体开发后**保留在仓库**作为社区接力的长期参考。
+Constitution（`.specify/memory/constitution.md`）把本文与四份事实源中的硬约束固化为实施门禁；当前为 v2.0.0，明确 Profile 统一运行时契约、上下文资产非 Tool、状态外置，以及“9 模块为默认基线、显式审批后才可演进”。**不允许 AI agent 未经用户批准自行修改 constitution**；发现原则与事实源冲突时必须停下讨论并在同一变更中同步。Spec-Kit 产物主体开发后保留在仓库作为长期参考。
 
 实施纪律（都是文档点名 AI agent 容易出问题的地方）：
 - **注释用中文**：代码注释（Javadoc/行内注释）与错误/审计消息一律简体中文，只写"为什么"；标识符、类名、方法名、`@author` 等保持英文。

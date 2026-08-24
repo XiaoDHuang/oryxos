@@ -2,7 +2,7 @@
 
 ## R1 消息历史序列化回读(最需核实的一条)
 
-- **Decision**: `messages_json` 存 `[{role, content, toolCalls?[]}]`;回读按 role 重建:`user`→`UserMessage`,`assistant`→`AssistantMessage.builder().content().toolCalls(...)`,`tool`→`ToolResponseMessage.builder().responses(...)`,`system`→`SystemMessage`。
+- **Decision**: `messages_json` 存 `[{role, content, toolCalls?[]}]`;回读按 role 重建:`user`→`UserMessage`,`assistant`→`AssistantMessage.builder().content().toolCalls(...)`,`tool`→`ToolResponseMessage.builder().responses(...)`;未知角色抛错(fail-loud,不静默吞成 user)。system 消息按设计不进 Session(PromptBuilder 每轮现拼),序列化格式不含该角色。
 - **核实证据**:javap 1.1.8 确认 `AssistantMessage.builder().content().toolCalls().build()` 与 `ToolResponseMessage.builder().responses().build()` 均存在(17 节已核 ToolResponse 三参 record)。
 - **Alternatives considered**: Java 原生序列化(弃:不可读、版本脆);Spring AI 消息直接 Jackson(弃:接口多态+protected 构造,反序列化要定制一堆)。
 
@@ -20,7 +20,7 @@
 ## R4 Session 持久化形态
 
 - **Decision**: 运行时 `Session`(core,17 节)不动;storage 侧 `SessionEntity`(sessions 表)+ `SessionRepository` + `JpaSessionManager implements SessionManager`(getOrCreate/get/save)。删除 17 节占位 `InMemorySessionManager`(17 节验收报告已预告本节升级,不留死代码)。
-- **id 拼接**:`channel + ":" + user + ":" + profileName`,只在 JpaSessionManager 内。
+- **id 拼接**:`channel + ":" + user + ":" + profileName`,只在 JpaSessionManager 内;三个分量必须非空且禁止冒号,从输入侧消除分隔符碰撞。
 - **Alternatives considered**: 实体也叫 Session(弃:与 core 运行时 Session 同名跨模块,引用处必混乱);id 用 hash(弃:可读性差了排查难,无收益)。
 
 ## R5 轻命令的数据来源

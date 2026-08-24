@@ -14,7 +14,7 @@ import picocli.CommandLine.Spec;
  *
  * @author OryxOS Contributors
  */
-@Command(name = "show", description = "查看指定 Profile 的配置原文")
+@Command(mixinStandardHelpOptions = true, name = "show", description = "查看指定 Profile 的配置原文")
 public class ProfileShowCommand implements Runnable {
 
   @Option(names = "--name", required = true, description = "Profile 名")

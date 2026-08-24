@@ -11,7 +11,7 @@ import picocli.CommandLine.Spec;
  *
  * @author OryxOS Contributors
  */
-@Command(name = "gateway", description = "启动多渠道守护进程(核心阶段仅 CLI 通道)")
+@Command(mixinStandardHelpOptions = true, name = "gateway", description = "启动多渠道守护进程(核心阶段仅 CLI 通道)")
 public class GatewayCommand implements Runnable {
 
   @Spec private CommandSpec commandSpec;

@@ -17,7 +17,7 @@ import picocli.CommandLine.Spec;
  *
  * @author OryxOS Contributors
  */
-@Command(name = "list", description = "列出现有会话")
+@Command(mixinStandardHelpOptions = true, name = "list", description = "列出现有会话")
 public class SessionListCommand implements Runnable {
 
   @Spec private CommandSpec commandSpec;

@@ -2,7 +2,7 @@
 
 > 本文档定义 OryxOS 的 AI 编程实施思路。主体思路是用 **Spec-Kit** 完成主体开发，把已有的需求文档和技术方案喂给 Spec-Kit，按五大核心能力拆成 5 个 user story 逐步实施；后续增量阶段切换到手动提示词配合 Claude Code。前置阅读《项目篇 OryxOS 业界调研》《OryxOS 需求文档》《OryxOS 技术方案》。本文档讲思路和拆解方法，不绑定具体时间安排，也不展开提示词细节。
 
-> 本文档以最新技术方案为准：核心阶段交付的是 Agent OS 的运行时内核，Maven 模块为 9 个（技术方案第 10 章），五大核心能力（对接 LLM、ReAct、Memory、Tool、Web Service）作为 5 个 user story 的骨架。
+> 本文档以最新技术方案为准：核心阶段交付的是 Agent OS 的运行时内核，当前默认使用技术方案第 10 章的 9 个 Maven 模块，五大核心能力（对接 LLM、ReAct、Memory、Tool、Web Service）作为 5 个 user story 的骨架。模块边界只有在 feature plan 论证、用户批准并同步技术方案与 AGENTS.md 后才可演进。
 
 ---
 
@@ -34,7 +34,7 @@ OryxOS 的 AI 编程实施分两个阶段，两个阶段用不同的协作工具
 
 已有文档的投入不浪费，Spec-Kit 只是把它们转换成 AI agent 能直接消费的格式。
 
-> **关键注意**：技术方案是 `/speckit.plan` 的输入，所以 plan 里的模块结构必须跟技术方案第 10 章的 9 个模块一致，喂文档时确保用的是最新版技术方案，否则生成的 plan 会按错误的模块数拆分。
+> **关键注意**：技术方案是 `/speckit.plan` 的输入，所以 plan 默认必须跟技术方案第 10 章的 9 模块基线一致。确需调整模块时，必须先在该 feature plan 中论证并取得用户批准，再同步技术方案与 AGENTS.md；不能先改代码、后补文档。
 
 ---
 

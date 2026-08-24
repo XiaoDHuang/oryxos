@@ -8,6 +8,7 @@ import picocli.CommandLine.Command;
  * @author OryxOS Contributors
  */
 @Command(
+    mixinStandardHelpOptions = true,
     name = "session",
     description = "会话查看:list",
     subcommands = {SessionListCommand.class})
