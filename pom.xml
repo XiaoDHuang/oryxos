@@ -25,6 +25,7 @@
         <!-- Same line as the Spring Boot BOM manages today; declared explicitly so it stays pinned. -->
         <snakeyaml.version>2.4</snakeyaml.version>
         <springdoc.version>2.8.17</springdoc.version>
+        <mockwebserver.version>4.12.0</mockwebserver.version>
         <!-- 9.x requires Jackson 3; Spring Boot 3.5 is on the Jackson 2 line. -->
         <logstash-logback-encoder.version>8.1</logstash-logback-encoder.version>
 
@@ -136,6 +137,11 @@
                 <groupId>org.springdoc</groupId>
                 <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
                 <version>${springdoc.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.squareup.okhttp3</groupId>
+                <artifactId>mockwebserver</artifactId>
+                <version>${mockwebserver.version}</version>
             </dependency>
             <dependency>
                 <groupId>net.logstash.logback</groupId>
