@@ -160,6 +160,8 @@ public class JpaSessionManager implements SessionManager {
     }
   }
 
+  private static final String ROLE_USER = "user";
+
   private static final String ROLE_ASSISTANT = "assistant";
 
   private static final String ROLE_TOOL = "tool";
@@ -194,7 +196,7 @@ public class JpaSessionManager implements SessionManager {
                       (String) entry.get("id"), (String) entry.get("name"), content)))
           .build();
     }
-    if ("user".equals(role)) {
+    if (ROLE_USER.equals(role)) {
       return new UserMessage(content);
     }
     // system 消息按设计不进 Session(PromptBuilder 每轮现拼);遇到未知角色必须响亮失败,

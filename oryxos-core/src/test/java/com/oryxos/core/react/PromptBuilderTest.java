@@ -1,11 +1,14 @@
 package com.oryxos.core.react;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
 
 import com.oryxos.core.context.ContextLoader;
 import com.oryxos.core.profile.Profile;
 import com.oryxos.core.prompt.Prompt;
 import com.oryxos.core.session.Session;
+import com.oryxos.core.tool.OryxTool;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -101,5 +104,40 @@ class PromptBuilderTest {
         new Profile.Settings(10, maxHistoryTurns),
         null,
         null);
+  }
+
+  @Test
+  @DisplayName("工具严格按Profile声明顺序选择且空声明不授权")
+  void exactToolSubset() {
+    OryxTool first = mock(OryxTool.class);
+    OryxTool second = mock(OryxTool.class);
+    PromptBuilder builder =
+        new PromptBuilder(new ContextLoader(workspace), Map.of("first", first, "second", second));
+    assertThat(
+            builder
+                .build(new Session("s", "ops"), toolProfile(List.of("second", "first")))
+                .availableTools())
+        .containsExactly(second, first);
+    assertThat(builder.build(new Session("s", "ops"), toolProfile(List.of())).availableTools())
+        .isEmpty();
+  }
+
+  @Test
+  @DisplayName("未知重复工具明确失败且不污染其他Profile")
+  void rejectsInvalidDeclarations() {
+    OryxTool tool = mock(OryxTool.class);
+    PromptBuilder builder = new PromptBuilder(new ContextLoader(workspace), Map.of("known", tool));
+    for (List<String> names : List.of(List.of("missing"), List.of("known", "known"))) {
+      assertThatThrownBy(() -> builder.build(new Session("s", "ops"), toolProfile(names)))
+          .isInstanceOf(IllegalArgumentException.class);
+    }
+    assertThat(
+            builder.build(new Session("s", "ops"), toolProfile(List.of("known"))).availableTools())
+        .containsExactly(tool);
+  }
+
+  private static Profile toolProfile(List<String> tools) {
+    return new Profile(
+        "ops", null, null, null, tools, null, null, null, null, null, null, null, null, null);
   }
 }

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.4.xsd">
+    <suppress>
+        <notes><![CDATA[
+          OryxOS internal reactor artifact. Dependency-Check maps the project jar to the unrelated
+          oscore CPE for CVE-2023-39022; the jar contains no third-party oscore component.
+        ]]></notes>
+        <cpe>cpe:2.3:a:oscore:oscore:1.0.0:snapshot:*:*:*:*:*:*</cpe>
+        <cve>CVE-2023-39022</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+          Spring Boot's embedded Tomcat dependency does not ship the optional examples webapp.
+          CVE-2026-66299 is specific to that examples application; keep all other Tomcat findings active.
+        ]]></notes>
+        <cpe regex="true">cpe:2\.3:a:apache:tomcat:10\.1\..*</cpe>
+        <cve>CVE-2026-66299</cve>
+    </suppress>
+</suppressions>

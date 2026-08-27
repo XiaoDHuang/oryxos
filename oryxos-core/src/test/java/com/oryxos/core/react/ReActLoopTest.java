@@ -146,6 +146,21 @@ class ReActLoopTest {
         null);
   }
 
+  @Test
+  @DisplayName("默认十轮和Profile覆盖不受工具可重试结果改变")
+  void iterationLimitIsIndependentOfRetryability() {
+    assertThat(new Profile.Settings(null, null).maxIterations()).isEqualTo(10);
+    AssistantMessage.ToolCall call =
+        new AssistantMessage.ToolCall("c", "function", "http_get", "{}");
+    ChatResponse response = responseWithToolCall(call);
+    when(llmGateway.chat(any(), any(), any())).thenReturn(response);
+    when(toolExecutor.execute(any(), any())).thenReturn(ToolResult.fail("http_get", "重试已耗尽", true));
+    String reply = loop.run(session, "查询", profileWithMaxIterations(2));
+    assertThat(reply).contains("达到最大轮数");
+    verify(llmGateway, times(2)).chat(any(), any(), any());
+    verify(toolExecutor, times(2)).execute(any(), any());
+  }
+
   private static ChatResponse responseWithText(String text) {
     return new ChatResponse(List.of(new Generation(new AssistantMessage(text))));
   }

@@ -10,7 +10,7 @@ import picocli.CommandLine;
 
 class OryxOsCliHelpTest {
 
-  /** 课件的 12 个叶子操作(父命令与兼容命令 version 不计入)。 */
+  /** 课件的 12 个叶子操作。父命令与兼容命令 version 不计入. */
   private static final String[][] LEAF_COMMANDS = {
     {"init"},
     {"status"},

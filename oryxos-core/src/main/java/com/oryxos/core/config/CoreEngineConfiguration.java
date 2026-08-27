@@ -20,12 +20,13 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
  * 引擎装配点. 17 节的引擎类刻意保持纯 POJO(不带 Spring 注解,单测容易),需要引擎的命令 (chat/serve/gateway)经这里把它们装成
- * Bean。核心阶段工具表为空——注册表与内置工具由 Tool 课(20 节)填装,这里只留 Map 注入位。
+ * Bean.工具模块完成注册后发布toolTable；没有该模块时保持空表，不依赖下游注册表类型.
  *
  * @author OryxOS Contributors
  */
@@ -63,14 +64,16 @@ public class CoreEngineConfiguration {
   /** 提示词装配器;工具表来自 toolTable Bean(缺省空表). */
   @Bean
   public PromptBuilder promptBuilder(
-      ContextLoader contextLoader, ObjectProvider<Map<String, OryxTool>> toolTable) {
+      ContextLoader contextLoader,
+      @Qualifier("toolTable") ObjectProvider<Map<String, OryxTool>> toolTable) {
     return new PromptBuilder(contextLoader, toolTable.getIfAvailable(Map::of));
   }
 
   /** 工具执行器:与 PromptBuilder 共享同一张工具表. */
   @Bean
   public ToolExecutor toolExecutor(
-      ObjectProvider<Map<String, OryxTool>> toolTable, ToolInvocationAudit toolInvocationAudit) {
+      @Qualifier("toolTable") ObjectProvider<Map<String, OryxTool>> toolTable,
+      ToolInvocationAudit toolInvocationAudit) {
     return new ToolExecutor(toolTable.getIfAvailable(Map::of), toolInvocationAudit);
   }
 

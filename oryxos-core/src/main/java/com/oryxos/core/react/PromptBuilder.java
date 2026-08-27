@@ -8,6 +8,7 @@ import com.oryxos.core.tool.OryxTool;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import org.springframework.ai.chat.messages.Message;
@@ -66,11 +67,16 @@ public class PromptBuilder {
 
   private List<OryxTool> availableTools(Profile profile) {
     List<OryxTool> tools = new ArrayList<>();
+    var declared = new HashSet<String>();
     for (String name : profile.tools()) {
-      OryxTool tool = toolTable.get(name);
-      if (tool != null) {
-        tools.add(tool);
+      if (!declared.add(name)) {
+        throw new IllegalArgumentException("Profile重复声明工具: " + name);
       }
+      OryxTool tool = toolTable.get(name);
+      if (tool == null) {
+        throw new IllegalArgumentException("Profile声明了未知工具: " + name);
+      }
+      tools.add(tool);
     }
     return tools;
   }
