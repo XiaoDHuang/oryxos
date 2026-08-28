@@ -190,11 +190,11 @@ ReAct 是 **Reason** 加 **Act** 的简称。算法步骤：
 
 Memory 是 Agent OS 区别于普通 chatbot 的核心能力。三层记忆是完整设计，核心阶段做会话和长期两层，情景记忆放扩展。
 
-> **架构调整说明：** Memory 做成三层记忆的统一门面，对 ReAct 循环只暴露一个 `MemoryService` 接口，内部再分会话记忆和长期记忆。这样对外叙述的"三层记忆"和内部实现一致，ReAct 循环不需要分别去问 Session 和 `MEMORY.md` 两个地方。
+> **架构调整说明：** Memory 做成三层记忆的统一门面，对 ReAct 循环只暴露一个 `MemoryService` 端口，内部再分会话记忆和长期记忆。为保持 Maven 依赖单向，端口接口及其 `MemoryScope` 契约位于 `oryxos-core`，实现位于 `oryxos-memory`；这是用户批准的模块职责边界调整，不新增模块。这样 ReAct 核心不依赖能力实现模块，也不会形成 `core ↔ memory` 循环。
 
 ### 5.1 模块组成
 
-**`MemoryService` 模块（统一门面）。** 对 ReAct 循环暴露统一的记忆读写接口。内部把会话记忆委托给 `SessionManager`（底层是 SQLite 的 Session 存储），把长期记忆委托给 `LongTermMemory`（底层是 `MEMORY.md` 文件）。ReAct 循环组装 prompt 时只调 `MemoryService` 一个接口拿到完整上下文。这是相对原设计的关键调整，避免 Memory 概念横跨两个模块却没有统一入口。
+**`MemoryService` 端口与实现（统一门面）。** `oryxos-core` 定义稳定接口，对 `PromptBuilder` 暴露 `buildContext(session, maxHistoryTurns)`，并向 Memory Tool 暴露 `remember(content, scope)`、`recall(keyword)`；`MemoryScope.CORE` / `ARCHIVAL` 作为方法签名的一部分同属核心契约。`oryxos-memory` 提供 `MemoryServiceImpl`，把会话消息按既定上限保留最近内容，把长期记忆委托给 `LongTermMemory`（底层是 `MEMORY.md` 文件）。`PromptBuilder` 只依赖端口，既不读取文件，也不依赖 `oryxos-memory` 实现模块。
 
 ![Memory 架构：MemoryService 门面统一收口 SessionManager 和 LongTermMemory](../website/public/images/docs-memory-service.svg)
 
@@ -211,7 +211,7 @@ Memory 是 Agent OS 区别于普通 chatbot 的核心能力。三层记忆是完
 
 **`MemoryTools` 子模块。** 把长期记忆暴露给 Agent 调用，包含 `save_memory` 和 `recall_memory` 两个内置 Tool，标注 `@Tool` 注解自动注册到 `ToolRegistry`，跟其他内置 Tool 一视同仁。
 
-**会话记忆。** 由 `SessionManager` 实现（见第 8 章），通过 SQLite 持久化，按 Channel 加用户加 Profile 联合标识管理。`MemoryService` 把它作为三层之一统一对外。
+**会话记忆。** 由 `SessionManager` 实现（见第 8 章），通过 SQLite 持久化，按 Channel 加用户加 Profile 联合标识管理。`MemoryServiceImpl` 基于传入的 `Session` 生成本轮上下文，不创建第二套 Session，也不在 Memory 模块拼接 `session_id`。
 
 ### 5.2 MEMORY.md 文件设计
 
@@ -223,7 +223,7 @@ Memory 是 Agent OS 区别于普通 chatbot 的核心能力。三层记忆是完
 
 ### 5.3 Memory 注入到 system prompt
 
-ReAct 循环每次组装 prompt 时，`MemoryService` 把会话历史和整个 `MEMORY.md` 内容（核心记忆区加归档记忆区）提供给 `PromptBuilder`。长期记忆每次重新读不做缓存，这样 Agent 调用 `save_memory` 后下一轮立刻能看到，每次读一个小文件性能可接受。扩展阶段加 in-memory cache 加文件 watch 自动失效。
+ReAct 循环每次组装 prompt 时，`PromptBuilder` 调 `MemoryService.buildContext(session, maxHistoryTurns)`，获得整个 `MEMORY.md` 内容（核心记忆区加截断后的归档记忆区）和最近会话历史。长期记忆每次重新读不做缓存，这样 Agent 调用 `save_memory` 后下一轮立刻能看到，每次读一个小文件性能可接受。扩展阶段加 in-memory cache 加文件 watch 自动失效。
 
 ### 5.4 MEMORY.md 跟 USER.md 的区别
 
@@ -604,9 +604,9 @@ OryxOS 核心阶段以 9 个 Maven 模块为默认工程基线：
 
 | 模块名 | 职责 |
 |--------|------|
-| `oryxos-core` | 核心抽象和接口：`OryxTool` 接口、`Session`、`Profile`、`ContextLoader`、`ReActLoop`、`PromptBuilder`、`ToolExecutor`、`AgentService`、`AgentScheduler`（定时触发）、`AgentLifecycleService`（扩展阶段，编排"定义一个 Agent"：Skill 落盘 + Profile 派生注册 + Scheduler 注册） |
+| `oryxos-core` | 核心抽象和接口：`OryxTool`、`MemoryService`、`MemoryScope`、`Session`、`Profile`、`ContextLoader`、`ReActLoop`、`PromptBuilder`、`ToolExecutor`、`AgentService`、`AgentScheduler`（定时触发）、`AgentLifecycleService`（扩展阶段，编排"定义一个 Agent"：Skill 落盘 + Profile 派生注册 + Scheduler 注册） |
 | `oryxos-provider` | 核心能力一：`ProviderService`、Function Calling 适配、Provider 配置（provider name 到 `ChatModel` 显式映射） |
-| `oryxos-memory` | 核心能力三：`MemoryService` 统一门面、`LongTermMemory`、`MemoryTools`（`save_memory` / `recall_memory`） |
+| `oryxos-memory` | 核心能力三：`MemoryServiceImpl`、`LongTermMemory`、`MemoryTools`（`save_memory` / `recall_memory`） |
 | `oryxos-tool` | 核心能力四：内置 Tool（`FileTools`、`ShellTools`、`HttpTools`、`NotifyTools`）、`McpClientService`、`McpToolAdapter`、`ToolRegistry`、`Sandbox` 接口 + `WhitelistSandbox` 实现、`NotifyChannelAdapter` 接口 + `WebhookNotifyAdapter` 实现（三合一模块） |
 | `oryxos-channel-cli` | CLI Channel：`CliChannel`、`oryxos chat` 命令实现 |
 | `oryxos-web` | 核心能力五：`WebServer`、6 个 `ApiController`、`GlobalExceptionHandler`、OpenAPI 文档 |

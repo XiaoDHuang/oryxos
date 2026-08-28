@@ -270,13 +270,14 @@ US-1 + US-2 完成后跑 `/speckit.analyze` 检查 spec 跟代码一致性。
 **核心目标**：让 Agent 跨对话保留状态。核心阶段做极简版的两层（会话和长期），用一份 `MEMORY.md` 文件加两个内置 Tool 实现，让 Agent 主动写入和读取。
 
 **涉及的 Maven 模块**：
-- `oryxos-memory`（核心能力三，含 `MemoryService` 三层门面、`LongTermMemory`、`MemoryTools`）
+- `oryxos-core`（定义 `MemoryService` / `MemoryScope` 端口并改造 `PromptBuilder`；端口反转避免 core 与 memory 循环依赖）
+- `oryxos-memory`（核心能力三实现，含 `MemoryServiceImpl`、`LongTermMemory`、`MemoryTools`）
 
 **Spec-Kit 任务拆分思路**：US-3 相对独立，依赖 US-2 但不影响 US-4。预期产出的 task 大类：
 
 | Task 类别 | 主要内容 |
 |----------|---------|
-| `MemoryService` 门面类 | 三层统一门面，内部把会话记忆委托给 `SessionManager`、长期记忆委托给 `LongTermMemory` |
+| `MemoryService` 端口与实现 | core 定义 `MemoryService` / `MemoryScope` 契约；memory 提供 `MemoryServiceImpl`，组合传入 Session 的最近历史与 `LongTermMemory`，保持 Maven 依赖单向 |
 | `LongTermMemory` 类 | `append`、`load`、`recallByKeyword`、`truncateIfNeeded` 四个方法，接口预留 `recall(mode)` 向量检索升级空间 |
 | `MemoryTools` 类 | `save_memory` + `recall_memory` 两个内置 Tool，用 `@Tool` 注解 |
 | `PromptBuilder` 集成类 | 在 `PromptBuilder` 里通过 `MemoryService` 注入记忆，确保不破坏 US-2 跑通的 ReAct 循环 |

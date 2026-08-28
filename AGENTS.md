@@ -35,9 +35,9 @@ JDK 21 + Spring Boot 3.x + Spring AI / Spring AI Alibaba + 自实现 ReAct loop 
 
 | 模块 | 对应能力 | 职责 |
 |---|---|---|
-| `oryxos-core` | 引擎 | `ReActLoop`、`PromptBuilder`、`ToolExecutor`、`ContextLoader`、`OryxTool` 抽象、Session/Profile 数据结构 |
+| `oryxos-core` | 引擎 | `ReActLoop`、`PromptBuilder`、`ToolExecutor`、`ContextLoader`、`OryxTool`/`MemoryService` 端口、`MemoryScope`、Session/Profile 数据结构 |
 | `oryxos-provider` | 能力一 对接 LLM | `ProviderService`、provider name 到 `ChatModel` 显式映射、Function Calling 适配 |
-| `oryxos-memory` | 能力三 Memory | `MemoryService`（三层统一门面）、`LongTermMemory`、`MemoryTools` |
+| `oryxos-memory` | 能力三 Memory | `MemoryServiceImpl`（三层统一门面实现）、`LongTermMemory`、`MemoryTools` |
 | `oryxos-tool` | 能力四 Tool | 内置 Tool（File/Shell/Http）、MCP Client、`ToolRegistry`、`SandboxChecker`，**三合一，不拆分** |
 | `oryxos-web` | 能力五 Web Service | `WebServer`、六个 ApiController、`GlobalExceptionHandler`、OpenAPI |
 | `oryxos-channel-cli` | 支撑 | CLI Channel（`oryxos chat`） |
