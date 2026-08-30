@@ -21,7 +21,7 @@ mvn -pl oryxos-tool -am dependency:tree "-Dincludes=com.oryxos:oryxos-memory,org
 mvn -pl oryxos-memory -am test
 ```
 
-预期：`LongTermMemoryTest`、`MemoryServiceImplTest`、`MemoryToolsTest` 及依赖模块测试全部执行且失败/错误为 0。
+预期：Memory模块`LongTermMemoryTest` 14项、`MemoryServiceImplTest` 5项、`MemoryToolsTest` 6项，共25项失败/错误/跳过为0；依赖模块测试同样全绿。
 
 ## 3. 关键课件守点
 
@@ -51,7 +51,7 @@ mvn -pl oryxos-tool -am test "-Dtest=PromptBuilderTest,ToolConfigurationTest,Mem
 mvn -pl oryxos-boot -am test "-Dtest=MemorySystemIntegrationTest" "-Dsurefire.failIfNoSpecifiedTests=false" "-Dgroups=integration" "-Dtest.excludedGroups=__none__"
 ```
 
-预期：真实 Spring 装配中 Profile 授权 Memory Tool，经 ReAct/ToolExecutor 写入临时 `MEMORY.md`，下一轮 Prompt 可见，并在临时 SQLite 中产生唯一成功审计。
+预期：执行1项。第一套 Spring 上下文的新 Session 经 ReAct/ToolExecutor 调用 `save_memory` 后关闭；第二套上下文复用同一 workspace/SQLite 并创建不同 Session，Prompt 自动带上已保存核心记忆，再调用 `recall_memory`。临时 SQLite 中 save/recall 各有且仅有一条最终成功审计。
 
 ## 6. 全量门禁
 
@@ -67,7 +67,7 @@ mvn clean verify "-Ddependency-check.skip=true"
 mvn clean verify
 ```
 
-预期：九模块测试及 Spotless、P3C、Checkstyle、PMD、SpotBugs/FindSecBugs、OWASP Dependency-Check 全绿。快速门禁不能替代完整门禁。
+预期：默认228项测试及 Spotless、P3C、Checkstyle、PMD、SpotBugs/FindSecBugs、OWASP Dependency-Check 全绿。快速门禁不能替代完整门禁。
 
 ## 7. 人工验证
 

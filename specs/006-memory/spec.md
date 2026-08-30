@@ -4,7 +4,7 @@
 
 **Created**: 2026-08-27
 
-**Status**: Draft
+**Status**: Implemented — verified
 
 **Input**: User description: "第22节需求：为 Agent 提供统一、可持久且可控的记忆能力；核心阶段使用本地文件保存核心与归档长期记忆，复用既有会话历史，由 Agent 主动保存并按关键词回忆，不引入结构化长期记忆、外部记忆服务或语义检索。"
 

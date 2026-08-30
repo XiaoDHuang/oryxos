@@ -71,7 +71,7 @@ public final class LongTermMemory {
 | 成功结果 | `已记住` |
 | 非法 scope | 明确失败；不得调用 MemoryService |
 
-scope 解析使用 trim + 大小写归一，只接受两个固定值。该 Tool 不自动判断内容重要性，也不在后台触发。
+scope 解析先trim，再仅折叠ASCII A–Z并与core/archival常量精确比较；只接受两个固定值且不调用Unicode case transformation API。该 Tool 不自动判断内容重要性，也不在后台触发。
 
 ### recall_memory
 

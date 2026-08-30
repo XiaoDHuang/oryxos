@@ -19,6 +19,10 @@
             <groupId>com.oryxos</groupId>
             <artifactId>oryxos-core</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.oryxos</groupId>
+            <artifactId>oryxos-memory</artifactId>
+        </dependency>
 
         <dependency>
             <groupId>org.springframework.boot</groupId>

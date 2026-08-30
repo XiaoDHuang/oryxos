@@ -16,13 +16,13 @@
 
 **Storage**: 会话历史继续使用既有 SQLite `sessions`；长期记忆仅使用 `.oryxos/memory/MEMORY.md`，无新 schema、表或迁移。
 
-**Testing**: JUnit 5、AssertJ、Mockito、`@TempDir`；单元测试默认执行，必要的 Boot 真实装配/重启恢复场景标 `@Tag("integration")` 并显式运行。
+**Testing**: JUnit 5、AssertJ、Mockito、`@TempDir`；单元测试默认执行。Boot integration 使用同一临时 workspace/SQLite：第一套 Spring 上下文保存后关闭，第二套上下文创建新 Session 并召回，覆盖真实装配、重启恢复及两项 Memory Tool 审计；该测试标 `@Tag("integration")` 并显式运行。
 
 **Target Platform**: Linux 主流发行版与 Windows 开发环境；单 Spring Boot fat JAR、企业内网部署。
 
 **Project Type**: 既有 Maven 9 模块企业级单体运行时。
 
-**Performance Goals**: 长期记忆保持小文件量级，每轮同步读取预计 1–2ms；不得为了性能加入内容缓存。继续满足 100 并发 Session 和内部转发开销目标，不把 LLM 延迟计入。
+**Performance Goals**: 长期记忆保持小文件量级，每轮同步读取 1–2ms、100 并发 Session 和内部转发开销属于项目继承的非阻断观察目标，不作为本节墙钟时间断言；T007必须用100个并发保存做无丢写功能验收。不得为了性能加入内容缓存，真实压测留在扩展阶段。
 
 **Constraints**: 同步阻塞；不使用 Reactor、`CompletableFuture` 或自建线程池；核心区永不截断；归档注入上限 4000 字；写后下一读立即可见；工作区级作用域；错误/审计消息为简体中文；不写 `USER.md`；不引入 SQLite 长期记忆、Mem0、向量、自动提炼、缓存或新配置键。
 
@@ -110,11 +110,12 @@ oryxos-boot/
 研究结论详见 [research.md](research.md)。关键决定：
 
 1. `MemoryService.buildContext(Session, int)` 返回长期记忆 System Message 与最近会话 Message 列表；不新增 `MemoryContext` 公共类型。
-2. `PromptBuilder` 保留既有二参构造器作为无记忆兼容入口，新增三参构造器；生产配置通过 `ObjectProvider<MemoryService>` 注入真实实现。
-3. `LongTermMemory` 每次现读，同一规范化路径共用 JVM 锁，并以同目录临时文件原子替换完成“读—规范化—写”，防止同进程多实例并发丢失；核心阶段不承诺多进程共享写。
+2. `PromptBuilder` 保留既有二参构造器作为无记忆兼容入口，新增三参构造器；生产配置通过 `ObjectProvider<MemoryService>` 注入真实实现。仓库无子类且扩展只走端口，类标记final以避免构造异常finalizer风险，公开签名不变。
+3. `LongTermMemory` 每次现读，同一规范化路径共用 JVM 锁，并以同目录临时文件原子替换完成“读—规范化—写”；不支持原子移动或Windows拒绝覆盖式原子移动时回退普通替换，防止同进程多实例并发丢失；核心阶段不承诺多进程共享写。
 4. `MemoryTools` 是项目内置工具，不是普通 Java Plugin；`ToolConfiguration` 明确把它加入无额外插件 guard 的内置集合，之后仍统一包装、授权、执行和审计。
 5. 初始化文件固定含 `## 核心记忆` / `## 归档记忆`；不存在时创建，已有畸形/歧义分区失败关闭，不覆盖用户内容。
 6. 归档截断与检索只作用归档区；核心区完整，未命中返回稳定中文提示。
+7. `MemoryServiceImpl` 是US2/US3共享适配器，因Java接口不能分阶段只实现部分方法，在最早需要实际服务的US2一次完成全部三方法；US3仍以独立fake端口验收Prompt集成，任务中显式记录该跨故事归属。
 
 ## Phase 1 Design
 

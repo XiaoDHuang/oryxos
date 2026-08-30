@@ -79,7 +79,7 @@
 
 ## Decision 7: 不缓存，写入用同路径 JVM 锁和原子替换
 
-**Decision**: 每次 load/recall 重新读文件。初始化、修复和 append 对规范化绝对路径使用 JVM 内共享锁；写入通过同目录临时文件后 `ATOMIC_MOVE + REPLACE_EXISTING`，文件系统不支持原子移动时回退 `REPLACE_EXISTING`，finally 清理临时文件。
+**Decision**: 每次 load/recall 重新读文件。初始化、修复和 append 对规范化绝对路径使用 JVM 内共享锁；写入通过同目录临时文件后 `ATOMIC_MOVE + REPLACE_EXISTING`，文件系统不支持原子移动或Windows拒绝覆盖式原子移动时回退普通`REPLACE_EXISTING`，finally清理临时文件并对清理失败记不含路径的WARN。
 
 **Rationale**: 单个 `synchronized` 实例不能保护同一路径的多个实例。共享路径锁可防同一运行实例丢写；临时文件替换避免读到半写内容。锁只用于同步，不保存记忆内容，因此不是缓存或业务状态。
 
@@ -106,7 +106,7 @@
 **Decision**:
 
 - `null` scope 在服务层按 `ARCHIVAL`，Tool 的空/空白 scope 也缺省归档；
-- Tool scope 使用 `trim()` + `Locale.ROOT` 后只接受 core/archival；
+- Tool scope 使用 `trim()` 后仅把ASCII A–Z逐字符折叠为小写，再与core/archival常量精确比较，避免Unicode大小写转换API；
 - 空内容、空关键词、非法 scope、伪 header 内容为 `IllegalArgumentException`；
 - workspace/文件/结构/IO 失败为保留 cause 的 `IllegalStateException`，对外中文消息不含绝对路径；
 - recall 使用大小写敏感 `String.contains`，只搜归档，按文件顺序返回匹配行；无命中是空列表，由 Tool 映射成 `没有找到相关记忆`。

@@ -17,12 +17,23 @@ import picocli.CommandLine.Spec;
 @Command(mixinStandardHelpOptions = true, name = "init", description = "在当前目录初始化 .oryxos 工作区")
 public class InitCommand implements Callable<Integer> {
 
+  private final Path root;
+
   @Spec private CommandSpec commandSpec;
+
+  /** 使用当前目录下的默认工作区. */
+  public InitCommand() {
+    this(Path.of(".oryxos"));
+  }
+
+  /** 测试和嵌入场景显式指定工作区,避免修改全局工作目录. */
+  InitCommand(Path root) {
+    this.root = root;
+  }
 
   @Override
   public Integer call() throws Exception {
     PrintWriter out = commandSpec.commandLine().getOut();
-    Path root = Path.of(".oryxos");
     if (Files.exists(root)) {
       out.println(".oryxos 已存在 —— 跳过");
       return 0;
@@ -38,7 +49,8 @@ public class InitCommand implements Callable<Integer> {
     // 占位 DB 文件;表结构在首次 Spring 启动(chat/serve)时由 classpath 的 db/schema.sql 应用。
     Files.writeString(root.resolve("oryxos.db"), "");
 
-    Files.writeString(root.resolve("memory/MEMORY.md"), "# Long-term memory\n\n");
+    Files.writeString(
+        root.resolve("memory/MEMORY.md"), "# Long-term memory\n\n## 核心记忆\n\n## 归档记忆\n");
     Files.writeString(root.resolve("AGENTS.md"), "# Project agent guidelines\n\n");
     Files.writeString(root.resolve("SOUL.md"), "# Agent personality\n\n");
     Files.writeString(root.resolve("USER.md"), "# User preferences\n\n");

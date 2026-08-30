@@ -3,8 +3,11 @@ package com.oryxos.core.react;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.oryxos.core.context.ContextLoader;
+import com.oryxos.core.memory.MemoryService;
 import com.oryxos.core.profile.Profile;
 import com.oryxos.core.prompt.Prompt;
 import com.oryxos.core.session.Session;
@@ -86,6 +89,41 @@ class PromptBuilderTest {
     Prompt prompt = promptBuilder.build(session, profileWith(20, List.of()));
 
     assertThat(prompt.messages()).noneMatch(message -> message.getText().contains("MEMORY"));
+  }
+
+  @Test
+  @DisplayName("Memory上下文位于身份System之后且由唯一端口提供")
+  void memoryContextFollowsIdentitySystemMessage() {
+    MemoryService memory = mock(MemoryService.class);
+    Session session = new Session("s-memory", "ops");
+    session.append(new UserMessage("原始历史"));
+    when(memory.buildContext(session, 20))
+        .thenReturn(List.of(new SystemMessage("MEMORY关键偏好"), new UserMessage("最近历史")));
+    PromptBuilder builder = new PromptBuilder(new ContextLoader(workspace), Map.of(), memory);
+
+    Prompt prompt = builder.build(session, profileWith(20, List.of()));
+
+    assertThat(prompt.messages()).hasSize(3);
+    assertThat(prompt.messages().get(0).getText()).contains("You are an ops agent.");
+    assertThat(prompt.messages().get(1)).isInstanceOf(SystemMessage.class);
+    assertThat(prompt.messages().get(1).getText()).isEqualTo("MEMORY关键偏好");
+    assertThat(prompt.messages().get(2)).isInstanceOf(UserMessage.class);
+    assertThat(prompt.messages().get(2).getText()).isEqualTo("最近历史");
+    verify(memory).buildContext(session, 20);
+  }
+
+  @Test
+  @DisplayName("真实Memory端口返回空时不增加无意义消息")
+  void emptyMemoryContextDoesNotAddMessages() {
+    MemoryService memory = mock(MemoryService.class);
+    Session session = new Session("s-empty", "ops");
+    when(memory.buildContext(session, 20)).thenReturn(List.of());
+
+    Prompt prompt =
+        new PromptBuilder(new ContextLoader(workspace), Map.of(), memory)
+            .build(session, profileWith(20, List.of()));
+
+    assertThat(prompt.messages()).singleElement().isInstanceOf(SystemMessage.class);
   }
 
   private static Profile profileWith(int maxHistoryTurns, List<String> bootstrap) {

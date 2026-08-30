@@ -10,9 +10,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.oryxos.core.config.CoreEngineConfiguration;
 import com.oryxos.core.context.ContextLoader;
+import com.oryxos.core.memory.MemoryScope;
+import com.oryxos.core.memory.MemoryService;
 import com.oryxos.core.profile.ProfileRegistry;
 import com.oryxos.core.react.LlmGateway;
 import com.oryxos.core.react.PromptBuilder;
@@ -21,6 +24,7 @@ import com.oryxos.core.react.ToolInvocationAudit;
 import com.oryxos.core.session.Session;
 import com.oryxos.core.session.SessionManager;
 import com.oryxos.core.tool.OryxTool;
+import com.oryxos.memory.MemoryTools;
 import com.oryxos.tool.mcp.McpClientService;
 import com.oryxos.tool.notify.WebhookNotifyAdapter;
 import com.oryxos.tool.sandbox.PermissiveSandbox;
@@ -36,6 +40,7 @@ import java.util.function.Consumer;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
@@ -207,6 +212,45 @@ class ToolConfigurationTest {
             });
   }
 
+  @Test
+  @DisplayName("Memory工具作为内置能力可执行且保留普通插件默认拒绝")
+  void registersMemoryToolsAsTrustedBuiltins() {
+    runner(MemoryFixture.class)
+        .run(
+            context -> {
+              assertThat(context).hasNotFailed();
+              ToolRegistry registry = context.getBean(ToolRegistry.class);
+              MemoryService service = context.getBean(MemoryService.class);
+              when(service.recall("Java")).thenReturn(List.of("归档Java"));
+
+              var saved =
+                  registry
+                      .asMap()
+                      .get("save_memory")
+                      .execute("{\"content\":\"偏好\",\"scope\":\"core\"}");
+              var recalled =
+                  registry.asMap().get("recall_memory").execute("{\"keyword\":\"Java\"}");
+
+              assertTrue(saved.success());
+              assertEquals("已记住", saved.content());
+              assertTrue(recalled.success());
+              assertEquals("归档Java", recalled.content());
+              verify(service).remember("偏好", MemoryScope.CORE);
+              verify(service).recall("Java");
+            });
+  }
+
+  @Test
+  @DisplayName("Memory工具名称冲突会阻止冻结发布")
+  void rejectsMemoryToolNameConflicts() {
+    runner(MemoryFixture.class, MemoryConflictFixture.class)
+        .run(
+            context -> {
+              assertThat(context).hasFailed();
+              assertThat(context.getStartupFailure()).hasStackTraceContaining("save_memory");
+            });
+  }
+
   @SuppressWarnings("unchecked")
   private static Map<String, OryxTool> table(Object value) {
     return (Map<String, OryxTool>) value;
@@ -217,13 +261,13 @@ class ToolConfigurationTest {
   void qualifiesBothCoreConsumers() throws Exception {
     var prompt =
         CoreEngineConfiguration.class.getMethod(
-            "promptBuilder", ContextLoader.class, ObjectProvider.class);
+            "promptBuilder", ContextLoader.class, ObjectProvider.class, ObjectProvider.class);
     var executor =
         CoreEngineConfiguration.class.getMethod(
             "toolExecutor", ObjectProvider.class, ToolInvocationAudit.class);
-    assertNotNull(prompt.getParameters()[1].getAnnotation(Qualifier.class));
+    assertNotNull(prompt.getParameters()[2].getAnnotation(Qualifier.class));
     assertNotNull(executor.getParameters()[0].getAnnotation(Qualifier.class));
-    assertEquals("toolTable", prompt.getParameters()[1].getAnnotation(Qualifier.class).value());
+    assertEquals("toolTable", prompt.getParameters()[2].getAnnotation(Qualifier.class).value());
     assertEquals("toolTable", executor.getParameters()[0].getAnnotation(Qualifier.class).value());
   }
 
@@ -351,6 +395,34 @@ class ToolConfigurationTest {
     @Bean
     Sandbox customSandbox() {
       return CUSTOM;
+    }
+  }
+
+  @TestConfiguration(proxyBeanMethods = false)
+  static class MemoryFixture {
+    @Bean
+    MemoryService memoryService() {
+      return mock(MemoryService.class);
+    }
+
+    @Bean
+    MemoryTools memoryTools(MemoryService memoryService) {
+      return new MemoryTools(memoryService);
+    }
+  }
+
+  static class MemoryConflict {
+    @Tool(name = "save_memory", description = "冲突的记忆工具")
+    public String save(String content) {
+      return content;
+    }
+  }
+
+  @TestConfiguration(proxyBeanMethods = false)
+  static class MemoryConflictFixture {
+    @Bean
+    MemoryConflict memoryConflict() {
+      return new MemoryConflict();
     }
   }
 }

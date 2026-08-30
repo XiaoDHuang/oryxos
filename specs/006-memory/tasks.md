@@ -4,7 +4,7 @@
 
 **Input**: [spec.md](spec.md)、[plan.md](plan.md)、[research.md](research.md)、[data-model.md](data-model.md)、[Memory contract](contracts/memory-contract.md)、[quickstart.md](quickstart.md)；宪法 v2.0.0。
 
-**Status**: 规划完成，等待固定停点确认；未确认前不进入实现。
+**Status**: 实现、默认回归、显式integration、完整安全门禁与最终一致性分析均已完成；35/35任务有证据并关闭。
 
 **Tests**: 本节是核心特性，测试必需。所有行为任务先写 harness 并确认因缺失行为失败，再实现跑绿；不得以编译失败替代行为红态，不删断言、不 `@Disabled`、不放宽门禁。测试方法名使用英文，课件中文守点放 `@DisplayName`。
 
@@ -22,9 +22,9 @@
 
 **Purpose**: 锁定现有依赖、单向模块图与已批准职责调整，不提前写业务实现。
 
-- [ ] T001 复核 `docs/class/第22节：Memory 实现与代码讲解.md`、`docs/TechnicalSolution.md`、`docs/AiProgrammingGuide.md`、`AGENTS.md` 与 `specs/006-memory/plan.md` 的文件式范围及端口归属一致，并把H0 39/39前序类、Specify CLI 0.14.2、当前分支证据写入 `specs/006-memory/verification.md`
-- [ ] T002 在 `oryxos-memory/pom.xml` 显式声明已锁定的 `spring-ai-model`，在 `oryxos-tool/pom.xml` 增加内部 `oryxos-memory` 依赖；不新增版本属性或外部依赖
-- [ ] T003 运行 dependency tree 并核对 `pom.xml` 九模块及 `oryxos-tool → oryxos-memory → oryxos-core` 无环，把 Spring AI 1.1.8 与 `ToolParam.required/description` 本地 API 证据写入 `specs/006-memory/verification.md`
+- [x] T001 复核 `docs/class/第22节：Memory 实现与代码讲解.md`、`docs/TechnicalSolution.md`、`docs/AiProgrammingGuide.md`、`AGENTS.md` 与 `specs/006-memory/plan.md` 的文件式范围及端口归属一致，并把H0 39/39前序类、Specify CLI 0.14.2、当前分支证据写入 `specs/006-memory/verification.md`
+- [x] T002 在 `oryxos-memory/pom.xml` 显式声明已锁定的 `spring-ai-model`，在 `oryxos-tool/pom.xml` 增加内部 `oryxos-memory` 依赖；不新增版本属性或外部依赖
+- [x] T003 运行 dependency tree 并核对 `pom.xml` 九模块及 `oryxos-tool → oryxos-memory → oryxos-core` 无环，把 Spring AI 1.1.8 与 `ToolParam.required/description` 本地 API 证据写入 `specs/006-memory/verification.md`
 
 **Checkpoint**: 依赖可解析、模块数仍为9，端口迁移审批和事实源同步有证据。
 
@@ -34,9 +34,9 @@
 
 **Purpose**: 建立所有故事共同依赖的唯一 Memory 契约，尚不实现文件行为。
 
-- [ ] T004 [P] 在 `oryxos-core/src/main/java/com/oryxos/core/memory/MemoryScope.java` 创建仅含 `CORE` / `ARCHIVAL` 的端口枚举并补中文Javadoc
-- [ ] T005 [P] 在 `oryxos-core/src/main/java/com/oryxos/core/memory/MemoryService.java` 按 contract 创建 `buildContext(Session,int)`、`remember(String,MemoryScope)`、`recall(String)` 唯一公共端口，不新增第二套Memory抽象
-- [ ] T006 在 `oryxos-memory/src/main/java/com/oryxos/memory/package-info.java` 同步模块职责说明，运行core/memory test-compile证明端口方向可编译且core POM未新增memory依赖
+- [x] T004 [P] 在 `oryxos-core/src/main/java/com/oryxos/core/memory/MemoryScope.java` 创建仅含 `CORE` / `ARCHIVAL` 的端口枚举并补中文Javadoc
+- [x] T005 [P] 在 `oryxos-core/src/main/java/com/oryxos/core/memory/MemoryService.java` 按 contract 创建 `buildContext(Session,int)`、`remember(String,MemoryScope)`、`recall(String)` 唯一公共端口，不新增第二套Memory抽象
+- [x] T006 在 `oryxos-memory/src/main/java/com/oryxos/memory/package-info.java` 同步模块职责说明，运行core/memory test-compile证明端口方向可编译且core POM未新增memory依赖
 
 **Checkpoint**: core 可独立编译端口，memory 只依赖 core 契约，不出现 core→memory 依赖。
 
@@ -50,14 +50,14 @@
 
 ### Tests for User Story 1
 
-- [ ] T007 [P] [US1] 在 `oryxos-memory/src/test/java/com/oryxos/memory/LongTermMemoryTest.java` 先写文件缺失/旧模板/无header旧内容/单分区无损升级、重复或倒序header失败且文件不变、CORE/ARCHIVAL带日期路由、4000/4001边界、物理文件不截断、跨实例无缓存、同路径并发无丢写、空内容/伪header/IO失败/USER.md不变的红态测试；原样落地 `truncationOnlyAffectsArchiveAndPreservesCore` 与 `writesAreVisibleImmediatelyWithoutCache`
-- [ ] T008 [P] [US1] 在 `oryxos-cli/src/test/java/com/oryxos/cli/InitCommandTest.java` 先写 `@TempDir` + Picocli 测试，断言新工作区生成精确双分区模板且第二次init不覆盖已有内容
+- [x] T007 [P] [US1] 在 `oryxos-memory/src/test/java/com/oryxos/memory/LongTermMemoryTest.java` 先写文件缺失/旧模板/无header旧内容/单分区无损升级、重复或倒序header失败且文件不变、CORE/ARCHIVAL带日期路由、4000/4001边界、物理文件不截断、跨实例无缓存、同路径100个并发保存全部保留、空内容/伪header/IO失败/USER.md不变的红态测试；原样落地 `truncationOnlyAffectsArchiveAndPreservesCore` 与 `writesAreVisibleImmediatelyWithoutCache`
+- [x] T008 [P] [US1] 在 `oryxos-cli/src/test/java/com/oryxos/cli/InitCommandTest.java` 先写 `@TempDir` + Picocli 测试，断言新工作区生成精确双分区模板且第二次init不覆盖已有内容
 
 ### Implementation for User Story 1
 
-- [ ] T009 [US1] 在 `oryxos-memory/src/main/java/com/oryxos/memory/LongTermMemory.java` 实现显式workspace、双分区精确整行解析、旧格式无损升级、核心完整/归档4000字注入视图、每次现读、完整归档保留、同路径JVM锁与同目录临时文件原子替换；异常中文且不泄漏绝对路径，跑绿T007
-- [ ] T010 [US1] 修改 `oryxos-cli/src/main/java/com/oryxos/cli/InitCommand.java`，保留无参入口并增加包级workspace构造供测试，默认 `MEMORY.md` 精确写双分区模板，既有工作区仍不覆盖，跑绿T008
-- [ ] T011 [US1] 运行 `mvn -pl oryxos-memory -am test -Dtest=LongTermMemoryTest -Dsurefire.failIfNoSpecifiedTests=false` 与 `oryxos-cli` InitCommandTest，确认指定suite均执行非零用例并把退出码/数量写入 `specs/006-memory/verification.md`
+- [x] T009 [US1] 在 `oryxos-memory/src/main/java/com/oryxos/memory/LongTermMemory.java` 按contract逐字实现四个public方法：`void append(String,MemoryScope)`、`String load()`、`List<String> recallByKeyword(String)`、`String truncateIfNeeded(String)`；包含显式workspace、双分区精确整行解析、旧格式无损升级、核心完整/归档4000字注入视图、每次现读、完整归档保留、同路径JVM锁与同目录临时文件原子替换，异常中文且不泄漏绝对路径，跑绿T007
+- [x] T010 [US1] 修改 `oryxos-cli/src/main/java/com/oryxos/cli/InitCommand.java`，保留无参入口并增加包级workspace构造供测试，默认 `MEMORY.md` 精确写双分区模板，既有工作区仍不覆盖，跑绿T008
+- [x] T011 [US1] 依次运行 `mvn -pl oryxos-memory -am test "-Dtest=LongTermMemoryTest" "-Dsurefire.failIfNoSpecifiedTests=false"` 与 `mvn -pl oryxos-cli -am test "-Dtest=InitCommandTest" "-Dsurefire.failIfNoSpecifiedTests=false"`，确认两个指定suite均执行非零用例并把退出码/数量写入 `specs/006-memory/verification.md`
 
 **Checkpoint**: User Story 1 可独立证明文件跨实例持久、写后立即可见、核心区不受归档限长影响。
 
@@ -71,17 +71,17 @@
 
 ### Tests for User Story 2
 
-- [ ] T012 [P] [US2] 在 `oryxos-memory/src/test/java/com/oryxos/memory/MemoryToolsTest.java` 先写两个精确 `@Tool` 名称、可选scope空缺省归档、trim/大小写、显式core、非法scope不调用service、recall命中换行拼接及未命中固定中文结果的红态测试
-- [ ] T013 [P] [US2] 在 `oryxos-memory/src/test/java/com/oryxos/memory/MemoryServiceImplTest.java` 先写 remember/recall 仅委托LongTermMemory、null scope缺省归档、空内容/空关键词失败，以及非空长期记忆SystemMessage、空记忆无空消息、每次build现读、最近N条角色顺序、N=0/负数行为且不创建Session/不拼session_id的红态测试
-- [ ] T014 [P] [US2] 在 `oryxos-tool/src/test/java/com/oryxos/tool/ToolConfigurationTest.java` 先加真实MemoryTools Bean测试：`save_memory`/`recall_memory` 在freeze前作为内置注册并可执行，重复名失败关闭，原普通Java插件仍默认拒绝，默认/用户Sandbox语义不变
+- [x] T012 [P] [US2] 在 `oryxos-memory/src/test/java/com/oryxos/memory/MemoryToolsTest.java` 先写两个精确 `@Tool` 名称、可选scope空缺省归档、trim/大小写、显式core、非法scope不调用service、recall命中换行拼接及未命中固定中文结果的红态测试
+- [x] T013 [P] [US2] 在 `oryxos-memory/src/test/java/com/oryxos/memory/MemoryServiceImplTest.java` 为US2/US3共享适配器先写完整红态测试：remember/recall仅委托LongTermMemory、null scope缺省归档、空内容/空关键词失败，以及非空长期记忆SystemMessage、空记忆无空消息、每次build现读、最近N条角色顺序、N=0/负数行为且不创建Session/不拼session_id；buildContext部分映射US3，但因接口不能部分实现而随最早消费者US2一起落地
+- [x] T014 [P] [US2] 在 `oryxos-tool/src/test/java/com/oryxos/tool/ToolConfigurationTest.java` 先加真实MemoryTools Bean测试：`save_memory`/`recall_memory` 在freeze前作为内置注册并可执行，重复名失败关闭，原普通Java插件仍默认拒绝，默认/用户Sandbox语义不变
 
 ### Implementation for User Story 2
 
-- [ ] T015 [US2] 在 `oryxos-memory/src/main/java/com/oryxos/memory/MemoryServiceImpl.java` 完整实现 buildContext/remember/recall：每次load、非空长期记忆SystemMessage、最近N条原Message、N负数失败、输入校验与缺省scope；不创建额外Session或状态，跑绿T013
-- [ ] T016 [US2] 在 `oryxos-memory/src/main/java/com/oryxos/memory/MemoryTools.java` 实现 `save_memory` / `recall_memory`，使用已核实的 `@ToolParam(required=false)`，scope按trim+Locale.ROOT解析，错误不泄漏Enum内部信息，跑绿T012/T013
-- [ ] T017 [US2] 修改 `oryxos-tool/src/main/java/com/oryxos/tool/ToolConfiguration.java`，用 `ObjectProvider<MemoryTools>` 显式加入trusted builtins后再扫描普通插件；不得全局放行 `@Tool` Bean或改变registry freeze顺序，跑绿T014
-- [ ] T018 [US2] 在 `oryxos-memory/src/main/java/com/oryxos/memory/MemoryConfiguration.java` 创建包私有AutoConfiguration，按 `.oryxos` workspace装配LongTermMemory、MemoryServiceImpl、MemoryTools，并在 `oryxos-memory/src/main/resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports` 登记；不新增配置键
-- [ ] T019 [US2] 运行 `mvn -pl oryxos-tool -am test -Dtest=LongTermMemoryTest,MemoryServiceImplTest,MemoryToolsTest,ToolConfigurationTest -Dsurefire.failIfNoSpecifiedTests=false`，确认所有指定suite非零且普通插件拒绝回归仍绿，记录到 `specs/006-memory/verification.md`
+- [x] T015 [US2] 在 `oryxos-memory/src/main/java/com/oryxos/memory/MemoryServiceImpl.java` 原子完成US2/US3共享的buildContext/remember/recall三方法：每次load、非空长期记忆SystemMessage、最近N条原Message、N负数失败、输入校验与缺省scope；不创建额外Session或状态，跑绿T013，US3只负责把已验收端口接入Prompt
+- [x] T016 [US2] 在 `oryxos-memory/src/main/java/com/oryxos/memory/MemoryTools.java` 实现 `save_memory` / `recall_memory`，使用已核实的 `@ToolParam(required=false)`，scope先trim再仅折叠ASCII A–Z并与常量精确比较，错误不泄漏Enum内部信息，跑绿T012/T013
+- [x] T017 [US2] 修改 `oryxos-tool/src/main/java/com/oryxos/tool/ToolConfiguration.java`，用 `ObjectProvider<MemoryTools>` 显式加入trusted builtins后再扫描普通插件；不得全局放行 `@Tool` Bean或改变registry freeze顺序，跑绿T014
+- [x] T018 [US2] 在 `oryxos-memory/src/main/java/com/oryxos/memory/MemoryConfiguration.java` 创建包私有AutoConfiguration，按 `.oryxos` workspace装配LongTermMemory、MemoryServiceImpl、MemoryTools，并在 `oryxos-memory/src/main/resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports` 登记；不新增配置键
+- [x] T019 [US2] 运行 `mvn -pl oryxos-tool -am test -Dtest=LongTermMemoryTest,MemoryServiceImplTest,MemoryToolsTest,ToolConfigurationTest -Dsurefire.failIfNoSpecifiedTests=false`，确认所有指定suite非零且普通插件拒绝回归仍绿，记录到 `specs/006-memory/verification.md`
 
 **Checkpoint**: save/recall 已形成可独立测试的 Agent 长期记忆闭环，且没有绕过 ToolExecutor 或放宽插件安全边界。
 
@@ -95,16 +95,16 @@
 
 ### Tests for User Story 3
 
-- [ ] T020 [P] [US3] 扩展 `oryxos-core/src/test/java/com/oryxos/core/react/PromptBuilderTest.java`，用fake MemoryService先写“身份/Bootstrap/日期→Memory→最近历史”顺序、空Memory退化、既有二参构造兼容、工具表声明顺序不漂移的红态回归
-- [ ] T021 [P] [US3] 在 `oryxos-core/src/test/java/com/oryxos/core/config/CoreEngineConfigurationTest.java` 先写有MemoryService时注入真实端口、缺席时二参兼容空实现、toolTable限定不漂移且不加载memory实现类的红态装配测试
-- [ ] T022 [P] [US3] 在 `oryxos-boot/src/test/java/com/oryxos/boot/MemorySystemIntegrationTest.java` 先写 `@Tag("integration")` 真实Spring装配：假LLM触发save_memory经ReAct/ToolExecutor写临时Memory，下一轮Prompt可见，重建Memory实例仍可读，并在临时SQLite断言恰一条最终成功tool_invocations
+- [x] T020 [P] [US3] 扩展 `oryxos-core/src/test/java/com/oryxos/core/react/PromptBuilderTest.java`，用fake MemoryService先写“身份/Bootstrap/日期→Memory→最近历史”顺序、空Memory退化、既有二参构造兼容、工具表声明顺序不漂移的红态回归
+- [x] T021 [P] [US3] 在 `oryxos-core/src/test/java/com/oryxos/core/config/CoreEngineConfigurationTest.java` 先写有MemoryService时注入真实端口、缺席时二参兼容空实现、toolTable限定不漂移且不加载memory实现类的红态装配测试
+- [x] T022 [P] [US3] 在 `oryxos-boot/src/test/java/com/oryxos/boot/MemorySystemIntegrationTest.java` 先写 `@Tag("integration")` 双上下文真实Spring装配：第一套上下文中新建Session并由假LLM触发save_memory，经ReAct/ToolExecutor写临时Memory且断言一条最终成功审计后关闭；第二套上下文复用同一workspace/SQLite、创建不同session_id的新Session，确认Prompt自动注入已保存核心记忆，再由假LLM触发recall_memory并断言第二条最终成功审计，save/recall各一条且无重复
 
 ### Implementation for User Story 3
 
-- [ ] T023 [US3] 修改 `oryxos-core/src/main/java/com/oryxos/core/react/PromptBuilder.java`，新增MemoryService正式构造并保留二参空记忆兼容入口，所有构造汇入同一build路径；删除重复历史截断职责但保持身份/Bootstrap/日期和工具表顺序，跑绿T020
-- [ ] T024 [US3] 修改 `oryxos-core/src/main/java/com/oryxos/core/config/CoreEngineConfiguration.java`，通过 `ObjectProvider<MemoryService>` 给生产PromptBuilder注入真实端口，memory模块缺席时仅core测试使用空实现，不反向依赖MemoryServiceImpl，跑绿T021
-- [ ] T025 [US3] 运行 `mvn -pl oryxos-core -am test -Dtest=PromptBuilderTest,CoreEngineConfigurationTest -Dsurefire.failIfNoSpecifiedTests=false`，确认两suite非零且前序Prompt/ReAct回归无失败，记录到 `specs/006-memory/verification.md`
-- [ ] T026 [US3] 运行quickstart中的显式 `MemorySystemIntegrationTest` 并跑绿T022；禁止新增第二套Tool执行/审计路径或修改 `oryxos-boot/src/main/java/com/oryxos/OryxOsApplication.java`，退出码/用例数/SQLite审计证据写入 `specs/006-memory/verification.md`
+- [x] T023 [US3] 修改 `oryxos-core/src/main/java/com/oryxos/core/react/PromptBuilder.java`，新增MemoryService正式构造并保留二参空记忆兼容入口，所有构造汇入同一build路径；删除重复历史截断职责但保持身份/Bootstrap/日期和工具表顺序，跑绿T020
+- [x] T024 [US3] 修改 `oryxos-core/src/main/java/com/oryxos/core/config/CoreEngineConfiguration.java`，通过 `ObjectProvider<MemoryService>` 给生产PromptBuilder注入真实端口，memory模块缺席时仅core测试使用空实现，不反向依赖MemoryServiceImpl，跑绿T021
+- [x] T025 [US3] 运行 `mvn -pl oryxos-core -am test -Dtest=PromptBuilderTest,CoreEngineConfigurationTest -Dsurefire.failIfNoSpecifiedTests=false`，确认两suite非零且前序Prompt/ReAct回归无失败，记录到 `specs/006-memory/verification.md`
+- [x] T026 [US3] 运行quickstart中的显式 `MemorySystemIntegrationTest` 并跑绿T022；核对两套Spring上下文、两个不同Session、save/recall各一条最终审计均真实发生，禁止新增第二套Tool执行/审计路径或修改 `oryxos-boot/src/main/java/com/oryxos/OryxOsApplication.java`，退出码/用例数/SQLite审计证据写入 `specs/006-memory/verification.md`
 
 **Checkpoint**: 三个故事全部可独立验证，完整主链为“Session + MEMORY.md → MemoryService → PromptBuilder → ReAct”，Memory Tool 经统一执行与审计。
 
@@ -114,14 +114,20 @@
 
 **Purpose**: 完成课件harness、前序回归、H4、完整安全门禁和人工项交接。
 
-- [ ] T027 对照 `docs/class/第22节：Memory 实现与代码讲解.md` 核查 `LongTermMemoryTest`、`MemoryToolsTest`、`MemoryServiceImplTest`、`PromptBuilderTest` 均存在且非空，两个课件关键守点断言逐条保真；结果写入 `specs/006-memory/verification.md`
-- [ ] T028 运行 `mvn test` 和quickstart显式 `MemorySystemIntegrationTest`，核对九模块前序测试与指定integration均执行非零用例且全绿；失败修实现，不删断言或弱化默认测试
-- [ ] T029 核对交付物存在性与范围：core两端口、memory三类+包私有配置、双分区初始化、Prompt/Tool接线存在；`rg`确认无 `memory_entries`、`memory.backend`、Mem0/向量/缓存实现、USER.md写路径或新增第10模块，把证据写入 `specs/006-memory/verification.md`
-- [ ] T030 执行H4六项自查：Memory外无新增涉外IO；LLM/tool审计仍落库；无明文key；session_id仍只由JpaSessionManager拼接；无Reactor/CompletableFuture/自建线程池；Spring AI自动工具执行仍关闭，逐项证据写入 `specs/006-memory/verification.md`
-- [ ] T031 运行快速 `mvn clean verify -Ddependency-check.skip=true`，记录195项既有基线加本节新增用例以及Spotless/P3C/Checkstyle/PMD/SpotBugs/FindSecBugs结果；只能称快速门禁
-- [ ] T032 运行未跳过任何插件的 `mvn clean verify`，确认OWASP Dependency-Check实际执行且九模块全部成功；完整门禁失败不得勾选或封板
-- [ ] T033 对 `specs/006-memory/spec.md`、`plan.md`、`tasks.md` 与实现运行 `speckit-analyze`，发现遗漏则追加稳定任务ID、修复并重跑相关门禁，不仅靠勾选宣布完成
-- [ ] T034 更新 `specs/006-memory/quickstart.md` 与 `specs/006-memory/verification.md`，交付六项DoD、改动导读、重点review位置、可复制命令及剩余人工项：真模型主动save、新会话/重启召回、USER.md只读、Memory Tool审计目检
+- [x] T027 对照 `docs/class/第22节：Memory 实现与代码讲解.md` 核查 `LongTermMemoryTest`、`MemoryToolsTest`、`MemoryServiceImplTest`、`PromptBuilderTest` 均存在且非空，两个课件关键守点断言逐条保真；结果写入 `specs/006-memory/verification.md`
+- [x] T028 运行 `mvn test` 和quickstart显式 `MemorySystemIntegrationTest`，核对九模块前序测试与指定integration均执行非零用例且全绿；失败修实现，不删断言或弱化默认测试
+- [x] T029 核对交付物存在性与范围：core两端口、memory三类+包私有配置、双分区初始化、Prompt/Tool接线存在；`rg`确认无 `memory_entries`、`memory.backend`、Mem0/向量/缓存实现、USER.md写路径或新增第10模块，把证据写入 `specs/006-memory/verification.md`
+- [x] T030 执行H4六项自查：Memory外无新增涉外IO；LLM/tool审计仍落库；无明文key；session_id仍只由JpaSessionManager拼接；无Reactor/CompletableFuture/自建线程池；Spring AI自动工具执行仍关闭，逐项证据写入 `specs/006-memory/verification.md`
+- [x] T031 运行快速 `mvn clean verify -Ddependency-check.skip=true`，记录195项既有基线加本节新增用例以及Spotless/P3C/Checkstyle/PMD/SpotBugs/FindSecBugs结果；只能称快速门禁
+- [x] T032 运行未跳过任何插件的 `mvn clean verify`，确认OWASP Dependency-Check实际执行且九模块全部成功；完整门禁失败不得勾选或封板
+- [x] T033 对 `specs/006-memory/spec.md`、`plan.md`、`tasks.md` 与实现运行 `speckit-analyze`，发现遗漏则追加稳定任务ID、修复并重跑相关门禁，不仅靠勾选宣布完成
+- [x] T034 更新 `specs/006-memory/quickstart.md` 与 `specs/006-memory/verification.md`，交付六项DoD、改动导读、重点review位置、可复制命令及剩余人工项：真模型主动save、新会话/重启召回、USER.md只读、Memory Tool审计目检
+
+---
+
+## Phase 7: Convergence（最终分析补救）
+
+- [x] T035 将静态/平台门禁驱动的补救修改同步到 `specs/006-memory/plan.md`、`research.md`、`tasks.md` 与 `verification.md`：MemoryService完整Javadoc、PromptBuilder在无子类前提下final且构造签名不变、memoryDirectory显式非空、Windows原子替换安全回退、临时清理WARN、scope ASCII折叠；不新增suppression，并以T031/T032最终全绿证据覆盖
 
 ---
 
@@ -138,6 +144,7 @@ Setup T001–T003
 ```
 
 - US1与US2同为P1；完整用户MVP需要二者，但各自harness可独立运行。
+- `MemoryServiceImpl` 同时服务US2工具和US3上下文；由于Java接口不能分阶段只实现部分方法，T013/T015在最早消费者US2一次实现并测试全部端口，US3仍可用fake MemoryService独立验收Prompt接线。
 - T007/T008可并行；T012/T013/T014可并行；T020/T021/T022在共享实现修改前可并行写红态测试。
 - `MemoryServiceImplTest` 在US2/US3串行扩展；`PromptBuilder.java`、`ToolConfiguration.java`、各POM不得交给多个并行执行者同时修改。
 - 所有实现必须在对应红态harness确认后开始；编译失败只用于接口搭建诊断，不算行为红态。
@@ -195,4 +202,4 @@ T022 Boot完整链路integration测试
 
 任务清单生成后必须先与课件交付物逐项对账并等待用户确认；未确认前不执行T001，不写生产代码，不自动commit/push/package.sh。
 
-**任务统计**: 34项；Setup 3、Foundation 3、US1 5、US2 8、US3 7、Polish 8。标注[P] 10项。MVP为US1+US2；US3完成后形成完整ReAct主链。
+**任务统计**: 35项；Setup 3、Foundation 3、US1 5、US2 8、US3 7、Polish 8、Convergence 1。标注[P] 10项。MVP为US1+US2；US3完成后形成完整ReAct主链。

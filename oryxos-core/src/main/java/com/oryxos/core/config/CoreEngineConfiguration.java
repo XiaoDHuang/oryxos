@@ -1,6 +1,7 @@
 package com.oryxos.core.config;
 
 import com.oryxos.core.context.ContextLoader;
+import com.oryxos.core.memory.MemoryService;
 import com.oryxos.core.profile.Profile;
 import com.oryxos.core.profile.ProfileLoader;
 import com.oryxos.core.profile.ProfileRegistry;
@@ -65,8 +66,13 @@ public class CoreEngineConfiguration {
   @Bean
   public PromptBuilder promptBuilder(
       ContextLoader contextLoader,
+      ObjectProvider<MemoryService> memoryService,
       @Qualifier("toolTable") ObjectProvider<Map<String, OryxTool>> toolTable) {
-    return new PromptBuilder(contextLoader, toolTable.getIfAvailable(Map::of));
+    Map<String, OryxTool> tools = toolTable.getIfAvailable(Map::of);
+    MemoryService memory = memoryService.getIfAvailable();
+    return memory == null
+        ? new PromptBuilder(contextLoader, tools)
+        : new PromptBuilder(contextLoader, tools, memory);
   }
 
   /** 工具执行器:与 PromptBuilder 共享同一张工具表. */

@@ -1,6 +1,7 @@
 package com.oryxos.tool;
 
 import com.oryxos.core.tool.OryxTool;
+import com.oryxos.memory.MemoryTools;
 import com.oryxos.tool.builtin.FileTools;
 import com.oryxos.tool.builtin.HttpTools;
 import com.oryxos.tool.builtin.NotifyTools;
@@ -10,10 +11,12 @@ import com.oryxos.tool.notify.WebhookNotifyAdapter;
 import com.oryxos.tool.sandbox.Sandbox;
 import com.oryxos.tool.sandbox.SandboxViolationException;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.aop.support.AopUtils;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -87,9 +90,11 @@ class ToolConfiguration {
       ShellTools shell,
       HttpTools http,
       NotifyTools notify,
+      ObjectProvider<MemoryTools> memoryTools,
       McpClientService mcp,
       ConfigurableListableBeanFactory factory) {
-    Set<Object> builtins = Set.of(files, shell, http, notify);
+    List<Object> builtins = new ArrayList<>(List.of(files, shell, http, notify));
+    memoryTools.ifAvailable(builtins::add);
     for (Object builtin : builtins) {
       // 内置方法自己在IO前enforce，普通Java插件不得获得这个包内接线许可。
       registry.registerAnnotated(builtin, () -> {});

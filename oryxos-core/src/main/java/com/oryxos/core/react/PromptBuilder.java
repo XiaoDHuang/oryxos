@@ -1,6 +1,8 @@
 package com.oryxos.core.react;
 
 import com.oryxos.core.context.ContextLoader;
+import com.oryxos.core.memory.MemoryScope;
+import com.oryxos.core.memory.MemoryService;
 import com.oryxos.core.profile.Profile;
 import com.oryxos.core.prompt.Prompt;
 import com.oryxos.core.session.Session;
@@ -11,6 +13,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.SystemMessage;
 
@@ -20,27 +23,53 @@ import org.springframework.ai.chat.messages.SystemMessage;
  *
  * @author OryxOS Contributors
  */
-public class PromptBuilder {
+public final class PromptBuilder {
 
   private static final DateTimeFormatter DATE_TIME_FORMAT =
       DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+  private static final MemoryService SESSION_ONLY_MEMORY =
+      new MemoryService() {
+        @Override
+        public List<Message> buildContext(Session session, int maxHistoryTurns) {
+          return List.copyOf(truncateHistory(session.messages(), maxHistoryTurns));
+        }
+
+        @Override
+        public void remember(String content, MemoryScope scope) {
+          throw new UnsupportedOperationException("当前运行时未装配Memory实现");
+        }
+
+        @Override
+        public List<String> recall(String keyword) {
+          throw new UnsupportedOperationException("当前运行时未装配Memory实现");
+        }
+      };
 
   private final ContextLoader contextLoader;
 
   private final Map<String, OryxTool> toolTable;
 
+  private final MemoryService memoryService;
+
   /** 以上下文供应方与工具表(名称 → 工具)创建构建器. */
   public PromptBuilder(ContextLoader contextLoader, Map<String, OryxTool> toolTable) {
+    this(contextLoader, toolTable, SESSION_ONLY_MEMORY);
+  }
+
+  /** 创建带统一Memory端口的构建器. */
+  public PromptBuilder(
+      ContextLoader contextLoader, Map<String, OryxTool> toolTable, MemoryService memoryService) {
     this.contextLoader = contextLoader;
     this.toolTable = Map.copyOf(toolTable);
+    this.memoryService = Objects.requireNonNull(memoryService, "MemoryService不能为空");
   }
 
   /** 由会话历史与 profile 构建本轮 prompt. */
   public Prompt build(Session session, Profile profile) {
     List<Message> messages = new ArrayList<>();
     messages.add(new SystemMessage(buildSystemText(profile)));
-    // 长期记忆接入位:22 节 Memory 模块就位后在此注入,本节恒为空段。
-    messages.addAll(truncateHistory(session.messages(), profile.settings().maxHistoryTurns()));
+    messages.addAll(memoryService.buildContext(session, profile.settings().maxHistoryTurns()));
     return new Prompt(messages, availableTools(profile));
   }
 
