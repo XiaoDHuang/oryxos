@@ -62,19 +62,19 @@
 
 ### Tests first
 
-- [ ] T014 [P] [US2] 新建 `oryxos-storage/src/test/java/com/oryxos/storage/memory/UtcMillisInstantConverterTest.java`，验证固定UTC毫秒串、`.000Z`及非零毫秒排序、时区不敏感和非法表示拒绝。（依赖 T013）
-- [ ] T015 [P] [US2] 新建 `oryxos-storage/src/test/java/com/oryxos/storage/memory/MemoryEntryRepositoryTest.java`，用真实文件SQLite验证四字段、typeof(created_at)=text、时间/id排序、参数化instr大小写/中文/引号/百分号/下划线，以及旧库增表/重复执行/错误结构检测。（依赖 T013）
-- [ ] T016 [P] [US2] 新建 `oryxos-memory/src/test/java/com/oryxos/memory/SqliteMemoryStoreContractTest.java`，绑定真实仓储；覆盖99/100/101窗口、窗口外查询、核心排除、并发已确认保存、重开回读、两个DB隔离与明确失败。（依赖 T013、T004）
+- [X] T014 [P] [US2] 新建 `oryxos-storage/src/test/java/com/oryxos/storage/memory/UtcMillisInstantConverterTest.java`，验证固定UTC毫秒串、`.000Z`及非零毫秒排序、时区不敏感和非法表示拒绝。（依赖 T013）
+- [X] T015 [P] [US2] 新建 `oryxos-storage/src/test/java/com/oryxos/storage/memory/MemoryEntryRepositoryTest.java`，用真实文件SQLite验证四字段、typeof(created_at)=text、时间/id排序、参数化instr大小写/中文/引号/百分号/下划线，以及旧库增表/重复执行/错误结构检测。（依赖 T013）
+- [X] T016 [P] [US2] 新建 `oryxos-memory/src/test/java/com/oryxos/memory/SqliteMemoryStoreContractTest.java`，绑定真实仓储；覆盖99/100/101窗口、窗口外查询、核心排除、并发已确认保存、重开回读、两个DB隔离与明确失败。（依赖 T013、T004）
 
 ### Implementation & checkpoint
 
-- [ ] T017 [US2] 新建 `oryxos-storage/src/main/java/com/oryxos/storage/memory/UtcMillisInstantConverter.java`，字段专用autoApply=false，Instant截毫秒后appendInstant(3)，读取须规范回转，不影响旧Session/审计时间字段。（依赖 T014）
-- [ ] T018 [US2] 新建 `oryxos-storage/src/main/java/com/oryxos/storage/memory/MemoryEntry.java`、`oryxos-storage/src/main/java/com/oryxos/storage/memory/MemoryEntryRepository.java`，并在 `oryxos-storage/src/main/resources/db/schema.sql` 追加四字段表与idx_memory_scope；保存原文、原三表不重建，查询严格按data-model的instr和时间/id规则。（依赖 T015、T017）
-- [ ] T019 [US2] 新建 `oryxos-memory/src/main/java/com/oryxos/memory/SqliteMemoryStore.java`，保存事务提交后才成功；load核心全量+归档最近100条，recall扫描全部归档；不UPDATE/DELETE历史、不缓存唯一状态。（依赖 T016、T018）
-- [ ] T020 [US2] 在 `oryxos-memory/src/main/java/com/oryxos/memory/MemoryConfiguration.java` 接入SQLite条件Store及SQL初始化后的结构/工作区校验，禁用后端不得查数据行；不把Repository已创建当成schema已就绪。（依赖 T019）
-- [ ] T021 [US2] 新建 `oryxos-boot/src/test/java/com/oryxos/boot/MemoryBackendFixture.java` 和 `oryxos-boot/src/test/java/com/oryxos/boot/MemoryBackendSystemIntegrationTest.java` 的本地部分，覆盖SQLite新Session/重启、旧三表数据保留、MD↔SQLite不搬数据；fixture复用真实能力和合成LLM响应。（依赖 T020）
-- [ ] T022 [US2] 执行仓储/Memory模块测试及T021显式integration，在 `specs/007-memory-backends/acceptance.md` 记录事务回读、默认路径无Memory行查询及两库隔离证据，不能只凭内存实体断言持久化。（依赖 T021）
-- [ ] T023 [US2] 完成US2故事级一致性审查、修复和本地稳定提交，将验收与提交号写入 `specs/007-memory-backends/acceptance.md`；不改006验收历史。（依赖 T022）
+- [X] T017 [US2] 新建 `oryxos-storage/src/main/java/com/oryxos/storage/memory/UtcMillisInstantConverter.java`，字段专用autoApply=false，Instant截毫秒后appendInstant(3)，读取须规范回转，不影响旧Session/审计时间字段。（依赖 T014）
+- [X] T018 [US2] 新建 `oryxos-storage/src/main/java/com/oryxos/storage/memory/MemoryEntry.java`、`oryxos-storage/src/main/java/com/oryxos/storage/memory/MemoryEntryRepository.java`，并在 `oryxos-storage/src/main/resources/db/schema.sql` 追加四字段表与idx_memory_scope；保存原文、原三表不重建，查询严格按data-model的instr和时间/id规则。（依赖 T015、T017）
+- [X] T019 [US2] 新建 `oryxos-memory/src/main/java/com/oryxos/memory/SqliteMemoryStore.java`，保存事务提交后才成功；load核心全量+归档最近100条，recall扫描全部归档；不UPDATE/DELETE历史、不缓存唯一状态。（依赖 T016、T018）
+- [X] T020 [US2] 在 `oryxos-memory/src/main/java/com/oryxos/memory/MemoryConfiguration.java` 接入SQLite条件Store及SQL初始化后的结构/工作区校验，禁用后端不得查数据行；不把Repository已创建当成schema已就绪。（依赖 T019）
+- [X] T021 [US2] 新建 `oryxos-boot/src/test/java/com/oryxos/boot/MemoryBackendFixture.java` 和 `oryxos-boot/src/test/java/com/oryxos/boot/MemoryBackendSystemIntegrationTest.java` 的本地部分，覆盖SQLite新Session/重启、旧三表数据保留、MD↔SQLite不搬数据；fixture复用真实能力和合成LLM响应。（依赖 T020）
+- [X] T022 [US2] 执行仓储/Memory模块测试及T021显式integration，在 `specs/007-memory-backends/acceptance.md` 记录事务回读、默认路径无Memory行查询及两库隔离证据，不能只凭内存实体断言持久化。（依赖 T021）
+- [X] T023 [US2] 完成US2故事级一致性审查、修复和本地稳定提交，将验收与提交号写入 `specs/007-memory-backends/acceptance.md`；不改006验收历史。（依赖 T022）
 
 ## Phase 5: US3 — 受控 Mem0（P2，不能省略）
 

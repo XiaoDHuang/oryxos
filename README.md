@@ -126,7 +126,7 @@ OryxOS 是一个 Spring Boot 3.x 单体应用，跑在 JDK 21 上。对外只有
 - **Spring AI 只用一半**：只用它的 Provider 协议转换和 `@Tool` 的 Schema 生成，禁用其自动 tool 执行，调度完全由 OryxOS 自己的 `ToolExecutor` 控制
 - **同步阻塞 + Java 21 virtual thread**，代码直观又能扛住高并发
 - **Sandbox 用 Path/Pattern 白名单**，不用已在 JDK 21 废弃的 `SecurityManager`
-- **SQLite 保存 Session/审计，长期记忆默认 `MEMORY.md`**；007 已批准增加 SQLite / 自托管 Mem0 后端，尚未实现，不改变默认本地运行方式
+- **SQLite 保存 Session/审计，长期记忆默认 `MEMORY.md`**；007 默认兼容已提交，SQLite 长期后端本地验收通过，自托管 Mem0 尚未实现，不改变默认本地运行方式
 
 工程上是 **Maven 多模块（9 个模块）**：`oryxos-core`（引擎）、`oryxos-provider`（能力一）、`oryxos-memory`（能力三）、`oryxos-tool`（能力四）、`oryxos-web`（能力五）、`oryxos-channel-cli`、`oryxos-storage`、`oryxos-cli`、`oryxos-boot`。
 
@@ -225,7 +225,7 @@ OryxOS 定位严监管企业，**安全是 day one 的架构设计，不是事�
 
 ## 项目状态
 
-OryxOS 目前处于**核心阶段实施中**：Maven 9 模块与 fat JAR 已就绪；006 文件式 Memory 已归档提交（`3d60ee0`）。007 三后端 Memory 已完成规格、澄清和设计，包含获准的外部受控 Mem0 适配及 HTTP 白名单；SQLite / Mem0 新后端尚未实现，详见 [007 范围记录](docs/decisions/007-memory-backends-scope.md)。
+OryxOS 目前处于**核心阶段实施中**：Maven 9 模块与 fat JAR 已就绪；006 文件式 Memory 已归档提交（`3d60ee0`）。007 已进入实现，默认 Markdown 兼容已在 `2a63e58` 提交，SQLite 后端本地验收通过；获准的外部受控 Mem0 适配及 HTTP 白名单尚未实现，整个007未封板，详见 [007 验收台账](specs/007-memory-backends/acceptance.md)。
 
 核心阶段目标：用 4 周 / 12 小时的最短链路，交付一个可演示的最小完整 Agent OS **运行时内核**——配置一个 Agent、通过 CLI 跟它对话、它能调用 LLM 和工具完成任务，并能通过 REST API 对外暴露。企业级治理能力（多租户、SSO、完整审计、Tool Policy）不在这一阶段范围内，由扩展阶段和社区接力补齐。
 

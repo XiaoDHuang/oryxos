@@ -5,7 +5,7 @@
 跨工具目录与 Skills 说明见 [`.agents/README.md`](.agents/README.md)。
 ## 项目现状
 
-Maven 9 模块与 Provider、ReAct、CLI/Session、Notify、Tool 已有实现，006 文件式 Memory 已在 `3d60ee0` 归档。用户于 2026-08-30 批准 007 三后端 Memory 核心范围扩张，当前是治理同步与拆解阶段，尚未实现 SQLite/Mem0 长期后端。9 模块仍是默认基线；任何模块新增、删除、改名或职责迁移必须先写入 feature plan、获得用户显式批准，并同步本文件与 `docs/TechnicalSolution.md` 后才能实施。
+Maven 9 模块与 Provider、ReAct、CLI/Session、Notify、Tool 已有实现，006 文件式 Memory 已在 `3d60ee0` 归档。007 于 2026-08-31 进入实现：US1 默认 Markdown 兼容已在 `2a63e58` 提交，SQLite 后端已实现并通过本地验收；Mem0 尚未实现或通过运行准入。实际任务与证据见 `specs/007-memory-backends/tasks.md`、`acceptance.md`，不能把本地后端绿灯当作 007 完成。9 模块仍是默认基线；任何模块新增、删除、改名或职责迁移必须先写入 feature plan、获得用户显式批准，并同步本文件与 `docs/TechnicalSolution.md` 后才能实施。
 
 ## 一句话理解 OryxOS
 
@@ -47,7 +47,7 @@ JDK 21 + Spring Boot 3.x + Spring AI / Spring AI Alibaba + 自实现 ReAct loop 
 
 ## 构建、运行与测试
 
-代码尚未开始，以下是核心阶段成形后的目标命令，实现工程骨架时按这套约定搭建，不要自创另一套。
+工程骨架已实现，以下是核心阶段约定命令；具体功能可用性与验收状态以对应 feature 台账为准。
 
 ```bash
 # 构建：Maven 多模块，产物是 oryxos-boot 下的可执行 fat JAR

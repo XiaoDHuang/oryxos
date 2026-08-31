@@ -291,6 +291,8 @@ US-1 + US-2 完成后跑 `/speckit.analyze` 检查 spec 跟代码一致性。
 
 007 建议分为 US1 默认兼容与统一 Store、US2 SQLite、US3 自托管 Mem0、US4 契约与整体验收。共同测试验证完整性、scope、写后可读和失败；差异测试分别验证 4000 Java char、100 条、远端分页/语义检索，不把三者混成同一算法。Mem0 测试应使用真实适配器加传输替身，不能用内存假 Store 冒充 HTTP 协议覆盖。最后显式跑集成测试及完整 `mvn clean verify`（含 OWASP），每故事均做一致性审查。未决项和实施准入见 [007 范围记录](decisions/007-memory-backends-scope.md)。
 
+2026-08-31用户已确认实施：US1已提交，US2已通过本地验收，按已生成tasks继续推进；这里的“生成后等确认”门禁已满足。实际执行记录见007的acceptance.md，不改变最终Spark回归和外部组件门禁。
+
 007 plan 的服务端适配追加范围已获用户批准：`integrations/mem0-adapter/` 是外部 Python 组件，不是第十个 Maven 模块。先验证固定 Mem0 调用点的暂存隔离与故障闭锁，再实现原始输入登记、版本历史和有效状态的事务提交、快照读取、操作凭据及内部调用审计。HTTP 白名单提前接入 tool，由 boot 注入 memory 窄端口。除 Java 完整 verify 外，还须生成 Python 依赖锁、运行 Python 测试/依赖安全扫描、镜像扫描及真实自托管验收；不能用 Maven 绿灯代表外部组件通过。新增表/公共类型以本 feature plan/contracts 清单为准，tasks 生成后仍停等实施确认。
 
 US-3 实施完成后跑 `/speckit.analyze`。

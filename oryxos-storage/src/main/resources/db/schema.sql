@@ -45,3 +45,13 @@ CREATE TABLE IF NOT EXISTS llm_calls (
     started_at          TEXT,
     completed_at        TEXT
 );
+
+-- 007仅追加记忆表,重复启动不能重建会话与审计历史。
+CREATE TABLE IF NOT EXISTS memory_entries (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    scope           VARCHAR(16) NOT NULL CHECK (scope IN ('CORE', 'ARCHIVAL')),
+    content         TEXT NOT NULL,
+    created_at      TIMESTAMP NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_memory_scope ON memory_entries(scope);

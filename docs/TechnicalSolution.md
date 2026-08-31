@@ -2,7 +2,7 @@
 
 本文档定义 OryxOS 的技术方案，回答 How 的问题。前置阅读《项目篇 OryxOS 业界调研》和《OryxOS 需求文档》。本文档以需求文档定义的五大核心能力（对接 LLM、ReAct 循环、Memory 记忆、Plugin Tool、Web Service）为骨架展开，每个模块只给职责和功能说明，不展开代码细节。代码层面的实现细节在研发阶段补充。
 
-> **2026-08-30 范围决议（方案 B）**：006 文件式 Memory 已归档；007 承接 Markdown / SQLite / 自托管 Mem0 三后端，属于已获用户批准的核心范围扩张，尚未实现。默认仍为单 JAR + 本地 Markdown，外部记忆服务必须显式启用且通过数据边界门禁。拆解及待核验项见 [007 范围记录](decisions/007-memory-backends-scope.md)。
+> **2026-08-30 范围决议（方案 B）**：006 文件式 Memory 已归档；007 承接 Markdown / SQLite / 自托管 Mem0 三后端，属于已获用户批准的核心范围扩张。2026-08-31进入实施：默认兼容已提交，SQLite已实现并通过本地验收，Mem0尚未实现。默认仍为单 JAR + 本地 Markdown，外部记忆服务必须显式启用且通过数据边界门禁。实际进度及待验收项见 [007 范围记录](decisions/007-memory-backends-scope.md)。
 
 > 承接需求文档的定位判断：核心阶段交付的是 Agent OS 的运行时内核，能力上对齐业界开源 Agent OS 的基础层；让 OryxOS 成为真正企业级 Agent OS 的治理层（多租户、SSO、完整审计、Tool 治理）在扩展和社区阶段补齐。本技术方案只覆盖核心阶段的运行时内核，并在架构上为治理层预留扩展点。
 
@@ -596,7 +596,7 @@ session list
 2. **`tool_invocations`**：每次 Tool 调用记录
 3. **`llm_calls`**：每次 LLM 调用记录
 
-007 为 SQLite 长期后端新增 `memory_entries`（尚未实现），不替代以上三表：
+007 为 SQLite 长期后端新增 `memory_entries`（2026-08-31已实现，本地验收通过），不替代以上三表：
 
 | 字段 | 类型 / 约束 | 含义 |
 |---|---|---|
