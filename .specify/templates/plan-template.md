@@ -40,6 +40,13 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
+For a Memory-backend feature, check constitution VI/VIII and the Memory compatibility section:
+default/offline behavior; one selected backend; stable core ports and acyclic module dependencies;
+explicit schema migration; backend-specific retrieval/windows; write visibility; and real-adapter tests.
+Before implementing Mem0, lock and verify its protocol/version, complete pagination, workspace identity,
+timeouts/failures, outbound guard wiring, all downstream data destinations, and audit provenance.
+Unresolved checks are implementation blockers, not assumed capabilities of the service.
+
 [Gates determined based on constitution file]
 
 ## Project Structure

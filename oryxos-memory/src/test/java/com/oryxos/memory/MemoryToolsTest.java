@@ -27,6 +27,13 @@ class MemoryToolsTest {
 
     assertThat(save.getAnnotation(Tool.class).name()).isEqualTo("save_memory");
     assertThat(recall.getAnnotation(Tool.class).name()).isEqualTo("recall_memory");
+    assertThat(save.getReturnType()).isEqualTo(String.class);
+    assertThat(recall.getReturnType()).isEqualTo(String.class);
+    assertThat(
+            MemoryService.class
+                .getMethod("remember", String.class, MemoryScope.class)
+                .getReturnType())
+        .isEqualTo(void.class);
     ToolParam scope = save.getParameters()[1].getAnnotation(ToolParam.class);
     assertThat(scope.required()).isFalse();
   }

@@ -132,10 +132,12 @@ Claude Code 是主推的 AI agent，Spec-Kit 官方支持 Claude Code。具体�
 | 3 | 自实现 ReAct loop | 不直接用 Spring AI 的 Agent 抽象 |
 | 4 | **Spring AI 只用一半** | 只用 Provider 抽象、协议转换、@Tool schema 生成；**禁用自动 tool 执行**；tool 调度完全由 `ReActLoop` + `ToolExecutor` 控制。**最容易被写错的一条** |
 | 5 | Plugin Tool 三档接入 | 主推 SKILL.md + MCP 零代码方式 |
-| 6 | SQLite + MEMORY.md 文件存储 | 向量检索放扩展阶段；`tool_invocations` 和 `llm_calls` **核心阶段就写入落库** |
+| 6 | 状态外置，长期后端可选 | Session/审计用 SQLite；006 文件基线，007 Markdown 默认 + SQLite/自托管 Mem0 显式可选；自建向量层仍在扩展。`tool_invocations` 和 `llm_calls` **核心阶段就落库** |
 | 7 | 每个 user story 完成后有可演示 Demo | 优先级是跑通而非完美 |
 
 > `constitution.md` 写一次定下来，整个主体开发期间不改。如果中途发现某条原则不对，停下来重新讨论，**不允许 AI agent 自己修改 constitution**。
+
+2026-08-30 用户批准方案 B，宪法由 v2.0.0 升级 v3.0.0，放宽长期记忆仅限文件的约束并补充外部后端数据门禁。006 在 `3d60ee0` 归档，原 spec/plan/tasks 与证据保留；007 单独 specify → clarify → plan → tasks → analyze → implement，不追溯扩写 006。四份事实源和 AGENTS 必须先同步；该批准不等于任何 Mem0 部署已经通过安全或协议核验。
 
 ---
 
@@ -164,7 +166,7 @@ Claude Code 是主推的 AI agent，Spec-Kit 官方支持 Claude Code。具体�
 
 - 技术栈选型（JDK 21 + Spring Boot 3.x + Spring AI Alibaba + SQLite + Picocli）
 - 9 个 Maven 模块的职责（对照技术方案第 10 章）
-- 关键技术决策的展开（自实现 ReAct、Spring AI 只用一半的边界、Plugin Tool 三档、SQLite + MEMORY.md、审计 day one 落库）
+- 关键技术决策的展开（自实现 ReAct、Spring AI 只用一半、Plugin Tool 三档、Session/审计 SQLite、长期后端选择与审计 day one 落库）
 - 数据流和模块间协作（`PromptBuilder` + `ProviderService` + `ToolExecutor` + `MemoryService` 三层门面）
 
 **Plan 生成后人工 review 是必要环节**。AI agent 可能根据自己对技术方案的理解做了不该做的取舍，重点检查：
@@ -267,21 +269,29 @@ US-1 + US-2 完成后跑 `/speckit.analyze` 检查 spec 跟代码一致性。
 
 ### 4.3 US-3：Memory 三层记忆（核心能力三）
 
-**核心目标**：让 Agent 跨对话保留状态。核心阶段做极简版的两层（会话和长期），用一份 `MEMORY.md` 文件加两个内置 Tool 实现，让 Agent 主动写入和读取。
+**核心目标**：让 Agent 跨对话保留状态。006 已完成文件式长期记忆、统一门面及两个 Tool；007 独立承接三后端范围扩张。Memory 能力级 US-3 不等同于 feature 编号，007 内再拆自己的用户故事。
 
 **涉及的 Maven 模块**：
 - `oryxos-core`（定义 `MemoryService` / `MemoryScope` 端口并改造 `PromptBuilder`；端口反转避免 core 与 memory 循环依赖）
-- `oryxos-memory`（核心能力三实现，含 `MemoryServiceImpl`、`LongTermMemory`、`MemoryTools`）
+- `oryxos-memory`（`MemoryServiceImpl`、兼容的 `LongTermMemory`、`MemoryTools`；007 新增 Store 抽象和三后端实现/选择）
+- `oryxos-storage`（007 `memory_entries` 实体、Repository 与显式迁移）；boot 承接装配，memory 不反向依赖 tool 中的 Sandbox
 
 **Spec-Kit 任务拆分思路**：US-3 相对独立，依赖 US-2 但不影响 US-4。预期产出的 task 大类：
 
 | Task 类别 | 主要内容 |
 |----------|---------|
-| `MemoryService` 端口与实现 | core 定义 `MemoryService` / `MemoryScope` 契约；memory 提供 `MemoryServiceImpl`，组合传入 Session 的最近历史与 `LongTermMemory`，保持 Maven 依赖单向 |
-| `LongTermMemory` 类 | `append`、`load`、`recallByKeyword`、`truncateIfNeeded` 四个方法，接口预留 `recall(mode)` 向量检索升级空间 |
+| `MemoryService` 端口与实现 | 保留 core 的 006 公共签名与 `MemoryScope`；memory 门面组合传入 Session 与选定 Store，不新增第二套 Session |
+| 文件基线兼容 | 保留 `LongTermMemory` 的 `append`、`load`、`recallByKeyword`、`truncateIfNeeded` 行为，Markdown 适配复用原实现和断言 |
+| Store 与选择配置 | `LongTermMemoryStore` + Markdown/SQLite/Mem0，`memory.backend` 默认 Markdown；唯一选择、非法值失败、禁用后端零访问 |
+| SQLite 后端 | 四字段 `memory_entries`、原文保存、核心全量、归档最近 100 条、全量归档关键词查询、旧库显式升级 |
+| Mem0 后端 | 先核验版本/协议/分页/scope/可见性/完整下游与审计，再实现真实适配器；默认关闭，失败不静默降级 |
 | `MemoryTools` 类 | `save_memory` + `recall_memory` 两个内置 Tool，用 `@Tool` 注解 |
 | `PromptBuilder` 集成类 | 在 `PromptBuilder` 里通过 `MemoryService` 注入记忆，确保不破坏 US-2 跑通的 ReAct 循环 |
 | `MEMORY.md` 文件管理类 | 文件位置、格式约定、超长截断策略 |
+
+007 建议分为 US1 默认兼容与统一 Store、US2 SQLite、US3 自托管 Mem0、US4 契约与整体验收。共同测试验证完整性、scope、写后可读和失败；差异测试分别验证 4000 Java char、100 条、远端分页/语义检索，不把三者混成同一算法。Mem0 测试应使用真实适配器加传输替身，不能用内存假 Store 冒充 HTTP 协议覆盖。最后显式跑集成测试及完整 `mvn clean verify`（含 OWASP），每故事均做一致性审查。未决项和实施准入见 [007 范围记录](decisions/007-memory-backends-scope.md)。
+
+007 plan 的服务端适配追加范围已获用户批准：`integrations/mem0-adapter/` 是外部 Python 组件，不是第十个 Maven 模块。先验证固定 Mem0 调用点的暂存隔离与故障闭锁，再实现原始输入登记、版本历史和有效状态的事务提交、快照读取、操作凭据及内部调用审计。HTTP 白名单提前接入 tool，由 boot 注入 memory 窄端口。除 Java 完整 verify 外，还须生成 Python 依赖锁、运行 Python 测试/依赖安全扫描、镜像扫描及真实自托管验收；不能用 Maven 绿灯代表外部组件通过。新增表/公共类型以本 feature plan/contracts 清单为准，tasks 生成后仍停等实施确认。
 
 US-3 实施完成后跑 `/speckit.analyze`。
 

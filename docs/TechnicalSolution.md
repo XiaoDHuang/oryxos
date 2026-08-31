@@ -2,6 +2,8 @@
 
 本文档定义 OryxOS 的技术方案，回答 How 的问题。前置阅读《项目篇 OryxOS 业界调研》和《OryxOS 需求文档》。本文档以需求文档定义的五大核心能力（对接 LLM、ReAct 循环、Memory 记忆、Plugin Tool、Web Service）为骨架展开，每个模块只给职责和功能说明，不展开代码细节。代码层面的实现细节在研发阶段补充。
 
+> **2026-08-30 范围决议（方案 B）**：006 文件式 Memory 已归档；007 承接 Markdown / SQLite / 自托管 Mem0 三后端，属于已获用户批准的核心范围扩张，尚未实现。默认仍为单 JAR + 本地 Markdown，外部记忆服务必须显式启用且通过数据边界门禁。拆解及待核验项见 [007 范围记录](decisions/007-memory-backends-scope.md)。
+
 > 承接需求文档的定位判断：核心阶段交付的是 Agent OS 的运行时内核，能力上对齐业界开源 Agent OS 的基础层；让 OryxOS 成为真正企业级 Agent OS 的治理层（多租户、SSO、完整审计、Tool 治理）在扩展和社区阶段补齐。本技术方案只覆盖核心阶段的运行时内核，并在架构上为治理层预留扩展点。
 
 > **文档结构提示：** 全文分三部分。第一部分（第 1-10 章）是**底座**——让任意 Agent 都能可靠运行的引擎、能力和支撑设施，本身不是某个具体的业务 Agent。第二部分（第 11 章）讲底座之上怎么真正**定义一个业务 Agent**（Skill 定义做什么，Profile 绑定怎么跑，Web Service 是对外的定义入口）。第三部分（第 12-15 章）是两部分放到一起之后的整合验证、实施节奏和收尾。
@@ -28,7 +30,7 @@ OryxOS 是一个 **Spring Boot 3.x** 单体应用，跑在 **JDK 21** 上，基�
 | 4 | Tool 注册机制 | `@Tool` 注解 + **OryxTool** 抽象层 | 统一内置 Tool 和 MCP Tool 接口，ReAct 循环不感知 Tool 来源 |
 | 5 | HTTP 服务层 | Spring MVC + Java 21 virtual thread | 同步直观，单机撑千级并发，扩展阶段 `SseEmitter` 支持流式 |
 | 6 | Sandbox 策略 | 接口先行：`Sandbox` 抽象 + `WhitelistSandbox`（应用层 Path/Pattern 白名单）实现，扩展阶段按容器→microVM 演进 | `SecurityManager` 在 JDK 17 起废弃、JDK 21 已不可用，与 JDK 21+ 要求冲突；接口独立于白名单实现，未来换重隔离方案不用改调用方 |
-| 7 | 持久化方案 | SQLite + Spring Data JPA + `MEMORY.md` 文件 | 单二进制，审计表 day one 写入，避免后期从日志反解析返工 |
+| 7 | 持久化方案 | Session/审计用 SQLite + Spring Data JPA；长期记忆默认 Markdown，007 增加 SQLite / 自托管 Mem0 可选后端 | 默认单二进制；外部后端显式启用；审计 day one 写入 |
 
 **决策一：自己实现 ReAct loop。** Spring AI 负责 LLM 调用、Function Calling 的协议格式转换、Provider 抽象这些底层工作，ReAct loop 自己写，保证 Agent 核心完全可控，也保留未来定制循环行为的空间。
 
@@ -48,7 +50,7 @@ Tool 的实际调度和执行完全由 OryxOS 自己的 **`ReActLoop`** 加 **`T
 
 **决策六：Sandbox 先定接口，核心阶段只填一档实现。** 隔离强度和开销是一个跷跷板，从轻到重依次是应用层白名单校验、容器隔离（namespace + cgroups + seccomp）、microVM（Firecracker / Kata / gVisor）、完整虚拟机或物理隔离。为了不让核心阶段的实现选择绑死未来的架构，先抽象出一个 `Sandbox` 接口，表达"在受控环境里执行一个动作"这个意图，不携带任何一档实现特有的概念（不出现"容器镜像""VM 配置"字样）。核心阶段只实现 `WhitelistSandbox` 这一档：文件操作限制工作目录、Shell 命令白名单、HTTP 域名白名单，在应用层做校验，不使用 Java `SecurityManager`（它在 JDK 17 起已废弃、JDK 21 已不可用，与本项目 JDK 21+ 要求冲突）。扩展阶段按信号驱动升级：出现"要跑不可信代码或要多租户"时上容器隔离；出现"要跑完全不可信代码或要规模化多租户"时上 microVM。接口不随升级变化，新增的是实现类。
 
-**决策七：持久化用 SQLite 加 Spring Data JPA，Memory 长期记忆用 `MEMORY.md` 文件加关键词检索。** Profile YAML 放 `.oryxos/profiles/`，Session、Tool Invocation、LLM Call 落 SQLite。其中审计相关的 `tool_invocations` 和 `llm_calls` 两张表在核心阶段就做写入（不做查询接口），让可审计这个差异化能力的数据地基在 day one 就立起来，避免后期从日志反解析返工。完整的向量检索方案在扩展阶段升级（详见第 8 章）。
+**决策七：Session 与审计持久化用 SQLite 加 Spring Data JPA，长期记忆采用可选后端。** Profile YAML 放 `.oryxos/profiles/`，Session、Tool Invocation、LLM Call 落 SQLite。`tool_invocations` 和 `llm_calls` 从核心阶段起写入，查询接口留待扩展。006 已完成 `MEMORY.md` 文件和关键词检索；007 保留 Markdown 默认，并增加 SQLite 关键词检索和显式启用的自托管 Mem0 检索。自建向量索引、图谱和自动对话提炼仍在扩展阶段，Mem0 不接管 OryxOS 的运行时。
 
 ### 1.2 整体技术栈
 
@@ -76,10 +78,10 @@ OryxOS 的整体架构按"五大核心能力加支撑模块"组织。五大核�
 1. **CLI Channel** 用于本地交互和调试，**Web Service** 用于业务系统通过 REST API 集成，这两个是"人推"；**`AgentScheduler`**（8.5）按 cron 到点自动发起调用，是"钟推"。三个入口的消息最终都汇入同一个引擎，`AgentService` 作为统一入口不区分消息从哪个入口来。
 2. 引擎是 **ReAct 循环**，它是整个系统的中枢，负责把"接收消息、组装 Prompt、调用 LLM、执行 Tool、回填结果、继续推理"这条链路驱动起来。引擎自己不直接干活，而是调度三块能力：
    1. **Provider** 负责 LLM 调用并向外对接各家大模型 API
-   2. **Memory** 负责会话和长期记忆并读写本地文件
+   2. **Memory** 负责会话和长期记忆，通过门面访问选定的长期存储（默认本地文件）
    3. **Tool** 负责工具执行并通过 MCP Client 向外对接外部 MCP server
 
-这三块能力之下是存储层，Session 和审计数据落 SQLite，Profile、Bootstrap、Memory、Skill 这些用户可维护的数据落文件系统。
+这三块能力之下是存储层，Session 和审计数据落 SQLite，Profile、Bootstrap、Skill 落文件系统。长期 Memory 默认落文件，007 允许改选 SQLite 或通过门禁的自托管 Mem0；只有显式选择 Mem0 时才增加外部记忆服务依赖。下方架构图中的文件式 Memory 表示默认路径。
 
 这个架构有两个要点：
 
@@ -194,20 +196,38 @@ Memory 是 Agent OS 区别于普通 chatbot 的核心能力。三层记忆是完
 
 ### 5.1 模块组成
 
-**`MemoryService` 端口与实现（统一门面）。** `oryxos-core` 定义稳定接口，对 `PromptBuilder` 暴露 `buildContext(session, maxHistoryTurns)`，并向 Memory Tool 暴露 `remember(content, scope)`、`recall(keyword)`；`MemoryScope.CORE` / `ARCHIVAL` 作为方法签名的一部分同属核心契约。`oryxos-memory` 提供 `MemoryServiceImpl`，把会话消息按既定上限保留最近内容，把长期记忆委托给 `LongTermMemory`（底层是 `MEMORY.md` 文件）。`PromptBuilder` 只依赖端口，既不读取文件，也不依赖 `oryxos-memory` 实现模块。
+**`MemoryService` 端口与实现（统一门面）。** `oryxos-core` 定义稳定接口：`List<Message> buildContext(Session session, int maxHistoryTurns)`、`void remember(String content, MemoryScope scope)`、`List<String> recall(String keyword)`；`MemoryScope.CORE` / `ARCHIVAL` 同属核心契约。007 不改这些签名。`MemoryServiceImpl` 保留最近会话消息并将长期记忆委托给 memory 模块内的 `LongTermMemoryStore`；006 的具体 `LongTermMemory` 文件实现由 Markdown 适配器复用。`PromptBuilder` 只依赖核心端口，不读取文件、不感知后端。
 
 ![Memory 架构：MemoryService 门面统一收口 SessionManager 和 LongTermMemory](../website/public/images/docs-memory-service.svg)
 
-**`LongTermMemory` 子模块。** 长期记忆的核心读写，底层操作 `.oryxos/memory/MEMORY.md` 一个 Markdown 文件，内部按 `## 核心记忆` / `## 归档记忆` 两个 header 分区（详见 5.2）。对外提供四个方法：
+**`LongTermMemory` 文件实现（006 兼容基线）。** 操作 `.oryxos/memory/MEMORY.md`，按 `## 核心记忆` / `## 归档记忆` 分区（详见 5.2）。007 保留其既有公共入口或提供等价兼容适配，不直接用课件示例替换已验收实现：
 
 - `append(content, scope)`（追加内容到指定分区，`scope` 取 `MemoryScope.CORE` 或 `ARCHIVAL`，默认 `ARCHIVAL`，自动加日期 header）
-- `load`（加载整个文件返回，核心记忆区永远全量返回不截断）
+- `load`（读取文件，核心区全量返回，归档区只在注入结果中裁剪）
 - `recallByKeyword`（按关键词检索，只在归档记忆区做匹配，核心记忆区不参与检索因为它本来就会被全量注入）
-- `truncateIfNeeded`（只对归档记忆区生效，超过 4000 字保留最近内容，核心记忆区不受影响）
+- `truncateIfNeeded`（只裁剪归档注入内容，保留最近 4000 Java char，不删磁盘历史；核心区不受影响）
 
-`save_memory` 默认写入归档区，只有 Agent 判断"这是需要长期不丢的核心信息"时才显式传 `scope=CORE`。核心阶段**不做自动抽取**，分区完全由 Agent 通过 `save_memory` 的调用时机和 `scope` 参数手动决定，这是信号驱动升级原则在 Memory 模块的体现——自动从对话历史提炼记忆放到扩展阶段，等有真实误判/遗漏的使用数据再决定要不要做。
+`save_memory` 默认写归档，显式 `scope=core` 才写核心；scope 不改变工作区级共享边界。OryxOS 不增加启动、会话结束或上下文压力触发的自动提炼。用户在 007 clarify 中已批准 Mem0 在显式归档保存时自动提炼、合并和替换，并持久保留每次原始输入及被合并/替换的旧归档；历史须关联到保存操作和有效结果，不参加常规召回或自动归档注入。保存成功要求有效状态持久可读且历史留存完成，不要求输入逐字成为当前条目；核心内容仍完整保存，不能被推理合并改写。plan 须核验历史落位、关联、失败保全、后端能力及审计来源；若需新表或公共类型，先在 plan 列明并走既有审批流程，不把示例当作服务保证。
 
-接口预留向量检索升级空间：`recallByKeyword` 设计成可升级为 `recall`（带 `mode` 参数支持 keyword 加 semantic），切换底层实现不影响上层。
+**`LongTermMemoryStore`（007 新增设计）。** 在 memory 内统一保存、上下文加载与归档查询，不新增核心端口方法或 `mode` 参数。实现为 `MarkdownMemoryStore`、`SqliteMemoryStore`、`Mem0MemoryStore`；内部方法签名在 007 plan 定稿，不能用名为 `recallByKeyword` 的共同方法承诺 Mem0 语义检索等同于字面匹配。
+
+| 后端 | 注入规则 | 归档检索 | 配置与故障边界 |
+|---|---|---|---|
+| Markdown（默认，006 基线） | 核心全量 + 归档最近 4000 Java char | 全量归档包含匹配，保留原文件顺序 | 无外部依赖；沿用原子写、历史兼容、不缓存 |
+| SQLite（007） | 核心全量 + 归档最近 100 条，稳定顺序 | 全量归档关键词匹配，SQL 参数化 | 同一工作区 SQLite；显式建表/迁移，不删旧条目 |
+| 自托管 Mem0（007，可选） | 核心全量；归档窗口、分页、排序由 plan 锁定 | 允许语义检索，必须过滤归档 scope | 显式地址/凭证/白名单；超时或失败报错，不降级、不伪装空记忆 |
+
+`application.yaml` 的 `memory.backend` 仅允许 `markdown` / `sqlite` / `mem0`，省略时选 Markdown，重启生效。不选 Mem0 时不得创建需凭证的远程连接或探活。切换仅改变后续访问位置，不迁移、不删除、不双写旧数据；新后端为空不得伪装已迁移。
+
+Mem0 plan 必须锁定自托管部署版本与实际协议，核验核心全量读取、分页完成判定、scope 过滤、工作区身份映射、写后下一轮可读、超时及不确定写入的重试风险。所有外发前必须验证目标；凭证用环境变量，禁止默认云端地址。审查服务及模型/embedding/存储完整下游，不只看入口地址。Mem0 内部推理的审计不得冒充 OryxOS 的 `llm_calls`。
+
+现有 `oryxos-tool → oryxos-memory → core/storage`，Sandbox 位于 tool，memory 不得反向依赖 tool。用户已批准 007 提前补齐 HTTP 白名单：memory 定义 `MemoryOutboundGuard`，tool 提供仅放行白名单 HTTP 的 `HttpWhitelistSandbox`，boot 负责组合；其他动作仍拒绝，不提前完成第 24 节全部 Sandbox。没有接线的 Mem0 路径必须拒绝执行。
+
+**007 追加范围（用户已批准，尚未实现）**：原版 Mem0 REST 无法直接满足完整读取、历史先保全及内部审计，增加 `integrations/mem0-adapter/` 受控 Python 组件，与 Mem0 的运行依赖一起部署，不新增 Maven 模块、不进入默认单 JAR 路径。固定 Mem0 1.0.11 的已核验提炼调用点，使用请求级暂存适配，禁止直接调用原版 server 修改真实存储；核心保存绕过推理。外部组件使用 PostgreSQL + pgvector，当前状态、追加版本历史及操作结果在同一写事务提交，原始输入先登记；这属于存储事务适配，不自研检索算法或另建 Agent runtime。
+
+外部组件协议定为 `oryx-memory-v1`，与原版 Mem0 API 明确区分。持久模型为 `memory_namespaces`、`memory_operations`、`memory_current`、`memory_versions`、`memory_call_audits`，仅在外部服务库，不改变本地 SQLite 四字段 memory_entries。快照按固定 revision 分页，核心全量、有效归档最近 100 条、语义召回最多 20 条；历史不参与常规召回。具体模型、状态机、配置和接口见 `specs/007-memory-backends/` 的设计契约。
+
+Java 增加受限的 `MemoryOperationException`，由统一工具适配器转成不可重试失败；只透传固定中文错误分类及操作 UUID，不透传远端正文。既有 Tool 审计仍以 `status=failed` 加错误分类表示超时/未知，不假称原端口可写结构化 timeout。设计核验与实际启用分开：新增组件可以按计划实现及故障注入测试，但真实环境的版本锁、安全扫描、全路径与审计证据通过前不得启用部署或声明后端验收完成。
 
 **`MemoryTools` 子模块。** 把长期记忆暴露给 Agent 调用，包含 `save_memory` 和 `recall_memory` 两个内置 Tool，标注 `@Tool` 注解自动注册到 `ToolRegistry`，跟其他内置 Tool 一视同仁。
 
@@ -223,7 +243,7 @@ Memory 是 Agent OS 区别于普通 chatbot 的核心能力。三层记忆是完
 
 ### 5.3 Memory 注入到 system prompt
 
-ReAct 循环每次组装 prompt 时，`PromptBuilder` 调 `MemoryService.buildContext(session, maxHistoryTurns)`，获得整个 `MEMORY.md` 内容（核心记忆区加截断后的归档记忆区）和最近会话历史。长期记忆每次重新读不做缓存，这样 Agent 调用 `save_memory` 后下一轮立刻能看到，每次读一个小文件性能可接受。扩展阶段加 in-memory cache 加文件 watch 自动失效。
+ReAct 每次组装 prompt 时通过 `MemoryService.buildContext(session, maxHistoryTurns)` 获得选定后端的核心全量、归档窗口和最近会话历史。006 文件路径保持每次重新读取、不缓存。007 各后端都必须保证保存成功后下一轮可见；若远端异步处理，须在 plan 定义有界等待及失败语义，不得未经批准放宽为最终一致。窗口只限制 prompt，不删除底层历史。Mem0 查询失败不能等同于无记忆。
 
 ### 5.4 MEMORY.md 跟 USER.md 的区别
 
@@ -232,12 +252,12 @@ ReAct 循环每次组装 prompt 时，`PromptBuilder` 调 `MemoryService.buildCo
 | `USER.md` | 用户手写 | OryxOS 只读不写 | 用户的"初始设定"（Bootstrap 文件） |
 | `MEMORY.md` | Agent 通过 `save_memory` 写入 | OryxOS 读写 | Agent 的"成长记录"（长期记忆） |
 
-两者都进 system prompt，但来源和生命周期不同。
+两者都进 system prompt，但来源和生命周期不同。该表描述默认 Markdown 后端；改选其他长期后端也不得写 `USER.md`。
 
 ### 5.5 核心阶段不做的部分
 
 - 自动抽取（由 LLM 自己决定何时调 `save_memory`，不自动从对话提取）
-- 语义检索（`recall` 用关键词不引入向量库）
+- 自建语义/向量索引（007 显式可选 Mem0 的语义检索不在此排除项内）
 - 情景记忆（放扩展）
 - Memory Wiki（结构化 claim/evidence、矛盾检测）
 - 压缩（超长简单截断）
@@ -550,11 +570,11 @@ session list
 
 ### 9.1 持久化选型说明
 
-核心阶段选 **SQLite** 加 **Spring Data JPA** 做关系型持久化，**`MEMORY.md`** 文件加关键词检索做长期记忆。
+核心阶段选 **SQLite** 加 **Spring Data JPA** 做关系型持久化，长期记忆按 §5 选择后端。006 默认文件链路已验收，007 增加 SQLite / 自托管 Mem0；后者不成为默认运行依赖。
 
-**为什么核心阶段不用向量数据库：** LanceDB 在向量加全文检索上做得好，是 Memory 自然的升级方向，但它的 Java 本地嵌入式支持还在开发中，当前 Java SDK 只支持远程的 Cloud 或 Enterprise，不符合 OryxOS 单二进制部署的定位。其他向量库（Qdrant、Chroma、Milvus）都需要外部进程，pgvector 要外部 PostgreSQL。JVector 这种纯 Java 嵌入式向量库是另一条路但成熟度待验证。
+**为什么不把向量数据库设为默认依赖：** 默认单 JAR、本地文件/SQLite 路径不应要求额外向量服务。007 只批准集成可选自托管 Mem0，不批准在 OryxOS 内自建向量索引、双写管线或图谱系统；具体第三方部署能力与版本必须在使用前核实。
 
-核心阶段的判断是先用 SQLite 加 `MEMORY.md` 跑通最短链路，让实现者先掌握 Agent OS 的核心机制，向量检索这种检索体验优化放扩展阶段。
+006 先用 SQLite 加 `MEMORY.md` 跑通最短链路；007 在该基线上做后端替换，不重写已验收功能。Mem0 部署仍由使用者明确选择和维护。
 
 **扩展阶段升级路径：**
 
@@ -562,19 +582,30 @@ session list
 - **方案 B：** 接 PostgreSQL pgvector，企业部署多起一个 PG 服务，社区最成熟
 - **方案 C：** 用 JVector 纯 Java 嵌入式向量索引跟 SQLite 双写，保持单二进制
 
-具体选哪个扩展阶段决议。核心阶段 `LongTermMemory` 接口已预留升级空间（`recallByKeyword` 可升级为带 `mode` 的 `recall`），切换底层不影响上层 Tool。
+上述是自建向量层的扩展候选，不是 007 的附加任务。007 通过 memory 内部 Store 解耦；核心 `MemoryService` 与 Tool 对外签名保持稳定。
 
 ### 9.2 SQLite 关系型数据
 
 通过 Spring Data JPA 集成，`application.yaml` 配置数据源指向 `.oryxos/oryxos.db`。
 
-> **工程风险提示：** SQLite 本身 `ALTER TABLE` 能力有限，`hibernate.ddl-auto=update` 在 SQLite 上对表结构演进的支持很弱。核心阶段首次建表用 `update` 可以，但表结构后续演进时不要依赖 `update` 自动迁移，需要手动维护建表脚本或引入 Flyway/Liquibase。
+> **工程风险提示：** SQLite 表结构创建和演进一律使用手工脚本或显式迁移工具，禁止依赖 `hibernate.ddl-auto=update`。007 增表必须验证旧库升级与重复启动，不得重建或破坏既有 Session/审计表。
 
-核心表三张：
+006 已有基础表三张：
 
 1. **`sessions`**：Session 元数据加 JSON 序列化的对话历史
 2. **`tool_invocations`**：每次 Tool 调用记录
 3. **`llm_calls`**：每次 LLM 调用记录
+
+007 为 SQLite 长期后端新增 `memory_entries`（尚未实现），不替代以上三表：
+
+| 字段 | 类型 / 约束 | 含义 |
+|---|---|---|
+| `id` | INTEGER PRIMARY KEY AUTOINCREMENT | 稳定条目标识与相同时间下的排序依据 |
+| `scope` | VARCHAR(16) NOT NULL | `CORE` / `ARCHIVAL` |
+| `content` | TEXT NOT NULL | 记忆原文 |
+| `created_at` | TIMESTAMP NOT NULL | 写入时间 |
+
+索引 `idx_memory_scope`；不新增 Profile、用户或租户字段，保持当前工作区级共享语义。实体与 Repository 属于 storage，查询/窗口策略属于 memory。迁移版本与启动接线在 007 plan 明确；禁用 SQLite Memory 时不得读写该表，禁止把建表当成数据迁移。
 
 > **相对原方案的调整：** `tool_invocations` 和 `llm_calls` 在核心阶段就做写入（不一定做查询接口），因为"可审计"是 OryxOS 的差异化卖点之一，审计数据的地基应该 day one 就立起来，纯靠日志后期要做审计还得反解析返工。查询接口和审计报表放扩展阶段，但写入核心阶段就有。
 
@@ -594,7 +625,7 @@ session list
 
 ### 9.3 文件系统数据
 
-`.oryxos/` 里几类数据放文件系统不放 SQLite：Profile YAML、Bootstrap 文件、Memory（`MEMORY.md`）、`SKILL.md`、MCP 配置、日志。文件系统的优势是用户可以直接编辑、git 跟踪、备份。Profile 和 Bootstrap 这种用户主动维护的数据放文件系统比放数据库友好。
+`.oryxos/` 里 Profile YAML、Bootstrap、`SKILL.md`、MCP 配置、日志放文件系统；默认 Markdown Memory 也放 `memory/MEMORY.md`。SQLite / Mem0 长期后端不双写该文件，切换后仍保留原文件供备份及显式回切。Profile 和 Bootstrap 继续由用户维护，不因 Memory 后端改变。
 
 ---
 
@@ -606,11 +637,11 @@ OryxOS 核心阶段以 9 个 Maven 模块为默认工程基线：
 |--------|------|
 | `oryxos-core` | 核心抽象和接口：`OryxTool`、`MemoryService`、`MemoryScope`、`Session`、`Profile`、`ContextLoader`、`ReActLoop`、`PromptBuilder`、`ToolExecutor`、`AgentService`、`AgentScheduler`（定时触发）、`AgentLifecycleService`（扩展阶段，编排"定义一个 Agent"：Skill 落盘 + Profile 派生注册 + Scheduler 注册） |
 | `oryxos-provider` | 核心能力一：`ProviderService`、Function Calling 适配、Provider 配置（provider name 到 `ChatModel` 显式映射） |
-| `oryxos-memory` | 核心能力三：`MemoryServiceImpl`、`LongTermMemory`、`MemoryTools`（`save_memory` / `recall_memory`） |
+| `oryxos-memory` | 核心能力三：`MemoryServiceImpl`、兼容的 `LongTermMemory`、`MemoryTools`；007 新增 `LongTermMemoryStore`、Markdown/SQLite/Mem0 三实现及选择配置 |
 | `oryxos-tool` | 核心能力四：内置 Tool（`FileTools`、`ShellTools`、`HttpTools`、`NotifyTools`）、`McpClientService`、`McpToolAdapter`、`ToolRegistry`、`Sandbox` 接口 + `WhitelistSandbox` 实现、`NotifyChannelAdapter` 接口 + `WebhookNotifyAdapter` 实现（三合一模块） |
 | `oryxos-channel-cli` | CLI Channel：`CliChannel`、`oryxos chat` 命令实现 |
 | `oryxos-web` | 核心能力五：`WebServer`、6 个 `ApiController`、`GlobalExceptionHandler`、OpenAPI 文档 |
-| `oryxos-storage` | 持久化层：SQLite、`SessionRepository`、`ToolInvocationRepository`、`LlmCallRepository` |
+| `oryxos-storage` | 持久化层：SQLite、`SessionRepository`、`ToolInvocationRepository`、`LlmCallRepository`；007 新增 `memory_entries` 实体、仓储与显式迁移 |
 | `oryxos-cli` | 命令行入口：Picocli 主入口、12 个子命令、`ConfigLoader` |
 | `oryxos-boot` | Spring Boot 启动模块：主类、自动配置、依赖聚合 |
 
@@ -732,7 +763,7 @@ mvn clean package
 
 ### 第二周（3 小时）：核心能力三 + 能力四（Memory + Tool）
 
-- `MemoryService` 三层门面 + `LongTermMemory`（`MEMORY.md` 读写）、`save_memory` + `recall_memory`
+- 006：`MemoryService` 门面 + `LongTermMemory` 文件基线与两个 Tool；007：三后端续篇，单独计划与验收，不计作原基线已完成工作
 - `PromptBuilder` 加 Memory 注入
 - 文件 Tool + Shell Tool（`Sandbox` 接口 + `WhitelistSandbox` 应用层白名单）、`McpClientService`（连接外部 MCP server）
 - `ContextLoader` 加载 `SKILL.md`
@@ -758,7 +789,7 @@ mvn clean package
 
 ---
 
-核心阶段结束后 OryxOS 1.0 是一个可演示的最小完整 Agent OS 运行时内核，五大核心能力全部跑通。之后转入开源社区维护，扩展功能（多 Channel、Memory 向量检索、情景记忆、Skill 体系、MCP Server 暴露、Tool Policy、完整 Sandbox、Web Service 剩余端点、Web 仪表板、SSO 和多租户、完整审计、集群高可用）以及让 OryxOS 成为真正企业级 Agent OS 的治理层由社区陆续推进。
+核心阶段结束后 OryxOS 1.0 是一个可演示的最小完整 Agent OS 运行时内核，五大核心能力全部跑通。之后转入开源社区维护，扩展功能（多 Channel、自建 Memory 向量索引、情景记忆、Skill 体系、MCP Server 暴露、Tool Policy、完整 Sandbox、Web Service 剩余端点、Web 仪表板、SSO 和多租户、完整审计、集群高可用）以及让 OryxOS 成为真正企业级 Agent OS 的治理层由社区陆续推进。
 
 ---
 
@@ -770,7 +801,7 @@ mvn clean package
 
 **1000 个并发 Session 内存可控。** 1000 个 Session 平均 50KB 共 50MB 没问题。SQLite 写入主要由 Session 追加消息和审计表写入触发，核心阶段每次都写，压测发现瓶颈再优化成批量落盘。
 
-**Memory 文件 IO。** 每次组装 prompt 读一次 `MEMORY.md`，文件几 KB 到几十 KB 每次读 1 到 2ms，1000 并发可接受。扩展阶段加 cache 加文件 watch。
+**Memory IO。** 默认 Markdown 每次组装 prompt 读取文件，不缓存；SQLite 与 Mem0 的查询耗时、分页和超时须分别测量，不沿用文件 IO 的估算。007 不通过静默裁剪核心区来达成性能目标。
 
 **启动时间。** Spring Boot 在 JDK 21 下启动 2 到 4 秒，对常驻服务没问题，对 CLI 工具太慢。核心阶段 CLI 命令分两类，不需要 Spring 的直接用标准 API 操作文件，需要的才启动 Spring。扩展阶段用 GraalVM Native Image 把启动降到 100ms 以下。
 
@@ -778,13 +809,13 @@ mvn clean package
 
 ## 15. 总结
 
-OryxOS 技术方案核心：**JDK 21 + Spring Boot 3.x** 单体应用，自实现 ReAct loop，基于 **Spring AI Alibaba** 做 LLM 调用（只用其协议转换和 schema 生成，不用其自动 tool 执行），SQLite 持久化加 `MEMORY.md` 文件，Picocli 命令行。
+OryxOS 技术方案核心：**JDK 21 + Spring Boot 3.x** 单体应用，自实现 ReAct loop，基于 **Spring AI Alibaba** 做 LLM 调用（只用协议转换和 schema 生成，不用自动 tool 执行），SQLite 保存 Session/审计，长期记忆默认 Markdown、007 增加显式可选后端，Picocli 命令行。
 
 方案围绕五大核心能力展开：
 
 1. **能力一** 对接 LLM（Provider 抽象加显式 provider name 映射）
 2. **能力二** ReAct 循环（Agent 的大脑，引擎约数十行 Java）
-3. **能力三** Memory 三层记忆（统一门面，核心阶段 `MEMORY.md` 加两个内置 Tool，向量检索放扩展，接口预留升级空间）
+3. **能力三** Memory 三层记忆（稳定门面与两个 Tool；006 文件基线，007 Markdown/SQLite/自托管 Mem0 三后端；情景记忆和自建向量层仍在扩展）
 4. **能力四** Tool 体系（内置 9 个 Tool 加 Plugin Tool 三档接入，主推 `SKILL.md` 加 MCP 零代码，`NotifyTools` 对称补上出站通知能力，核心阶段 Tool 相关三合一为一个模块）
 5. **能力五** Web Service（REST API 六类操作核心 10 个端点，业务系统集成的唯一通道）
 
@@ -792,7 +823,7 @@ OryxOS 技术方案核心：**JDK 21 + Spring Boot 3.x** 单体应用，自实�
 
 实施按 4 周组织每周 3 小时：第一周对接 LLM + ReAct，第二周 Memory + Tool，第三周 Web Service，第四周多 Agent 演示 + 定时任务 + 工程化收尾。每周末有可演示成果，第四周末跑通对应需求文档第 13 章两个验收 demo（每日天气、每日科技日报）。
 
-**存储选型：** 核心阶段 SQLite + `MEMORY.md` + 关键词检索跑通最短链路，向量检索放扩展（LanceDB Java GA、pgvector、JVector 三选一），`MemoryService` 接口预留升级空间。
+**存储选型：** 默认 SQLite + `MEMORY.md` 最短链路不变；007 在核心范围内增加 SQLite Memory 和可选自托管 Mem0，不新增 Maven 模块、不改变引擎端口、不默认引入外部服务。自建向量层另行决议。
 
 **承接定位：** 核心阶段交付运行时内核，能力上对齐业界开源 Agent OS 基础层，企业级治理差异化在扩展阶段补齐。架构上为治理层预留扩展点（Tool Policy、多租户、审计查询、SSO 都有对应的预留位置）。
 

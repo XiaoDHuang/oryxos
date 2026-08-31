@@ -63,7 +63,7 @@ Agent 记得住用户的偏好、项目、决策、对话历史。三层记忆�
 | 层次 | 说明 | 核心阶段 |
 |------|------|---------|
 | 会话记忆 | 当前对话的完整历史，过长时自动压缩 | ✅ 实现 |
-| 长期记忆 | 用户偏好、项目背景、关键事实，存在 MEMORY.md 文件里，跨对话保留 | ✅ 实现（极简版） |
+| 长期记忆 | 用户偏好、项目背景、关键事实；默认 Markdown，007 增加 SQLite / 自托管 Mem0 可选后端 | 006 文件基线已实现；007 核心扩张已批准、待实现 |
 | 情景记忆 | 每个任务过程中学到的东西，修改了什么文件、做了什么决策 | ⏳ 扩展阶段 |
 
 **基于这个能力可以做的事：**
@@ -146,7 +146,7 @@ API 覆盖六类操作：
 | **Provider（供应商）** | LLM API 服务的抽象，实现统一接口让 Agent 不感知具体调的是哪家模型 |
 | **ReAct 循环** | Agent 的核心工作机制，Reason + Act。LLM 思考是否调用工具，调用后看结果，再决定下一步，直到给出最终响应 |
 | **Tool（工具）** | Agent 可以调用的外部能力。内置 Tool 是 OryxOS 自带的（文件、Shell、HTTP、通知推送）；Plugin Tool 是业务方自己写的 |
-| **Memory（记忆）** | Agent 跨对话保留的状态，分三层：会话记忆、长期记忆（MEMORY.md）、情景记忆（扩展阶段） |
+| **Memory（记忆）** | Agent 跨对话保留的状态，分三层：会话记忆、长期记忆（默认 Markdown，另可选 SQLite / 自托管 Mem0）、情景记忆（扩展阶段） |
 | **Channel（渠道）** | Agent 对外接入的消息入口，包括 CLI、企业微信、飞书、钉钉、Slack 等 |
 | **Web Service** | OryxOS 对外暴露的完整 REST API，是业务系统集成 OryxOS 的唯一通道 |
 | **Session（会话）** | 用户和 Agent 一次对话的上下文容器，包含对话历史、当前上下文、临时变量 |
@@ -335,18 +335,25 @@ ReAct 循环是 Agent 的核心工作机制，也是 OryxOS 最关键的一段�
 - Session 数据持久化到本地 SQLite，重启后可以恢复
 - 上下文超过 LLM context window 上限时简单截断早期对话
 
-#### 长期记忆（极简版）
+#### 长期记忆（006 文件基线 + 007 三后端）
 
-- 存在 `.oryxos/memory/MEMORY.md` 一个 Markdown 文件，跨所有对话保留
-- Agent 通过两个内置 Tool 主动读写：
-  - `save_memory(content)`：把要长期记住的事追加到 MEMORY.md
-  - `recall_memory(query)`：按关键词检索 MEMORY.md 里的相关内容
-- Agent 启动时 MEMORY.md 整个文件作为长期上下文注入到 system prompt
-- 文件超过 4000 字时简单截断（扩展阶段做压缩）
+2026-08-30 用户批准方案 B：保留已归档的 006，另以 007 承接三后端核心范围扩张。以下是批准后的需求，不表示 SQLite / Mem0 已实现；阶段及门禁见 [007 范围记录](decisions/007-memory-backends-scope.md)。
 
-**核心阶段不做**：自动从对话中抽取事实、语义检索（用关键词匹配）、情景记忆、Memory Wiki、矛盾检测。
+- 同一工作区的长期记忆跨会话共享；`core` / `archival` 表示重要性分区，不增加 Profile/用户/租户隔离语义。
+- `save_memory(content, scope)` 主动保存，scope 默认 `archival`；`recall_memory(keyword)` 查询归档，排除核心区。Tool 名、参数和引擎端口不因存储切换改变。
+- 每轮 prompt 注入核心全量、后端定义的归档窗口及最近会话历史；窗口裁剪只影响注入结果，不删除历史。
+- 默认 Markdown：`.oryxos/memory/MEMORY.md` 分区保存，归档保留最近 4000 Java char 注入；检索扫描全量归档，沿用 006 的包含匹配与顺序。
+- 可选 SQLite：`memory_entries` 保存原文，注入核心全量与归档最近 100 条；参数化关键词查询扫描全量归档。
+- 可选自托管 Mem0：允许后端语义检索，不承诺与字面匹配结果相同；必须验证 scope 过滤、核心全量、完整分页、归档窗口和写入可见性。具体协议/窗口在 007 plan 核定，不能直接照搬课件 REST 示例。
+- `memory.backend` 在启动时唯一选定后端（`markdown` 默认、`sqlite`、`mem0`），非法值明确失败；不用的后端不得访问存储或发起网络连接。切换不隐式迁移/删除/双写旧数据，不静默降级。
+- 保存成功后下一轮必须可读。Mem0 若有异步处理，必须有界等待或明确失败；网络错误不得被当作空记忆。重试不确定写入时必须防止重复副作用。
+- Mem0 默认关闭，仅显式地址、凭证、安全接线齐备且全链路数据不出域核验通过后可用；核验包括服务及其模型/embedding/存储下游。Tool 审计仍进 `tool_invocations`，服务内部推理另需可验证的审计来源，不能假称已经进 `llm_calls`。
+
+**核心阶段不做**：OryxOS 自动触发对话提炼、自建向量索引、情景记忆、Memory Wiki、图谱、独立记忆压缩任务。用户在 007 clarify 中已批准 Mem0 于显式保存归档时自动提炼、合并和替换，并持久保留原始输入与被合并/替换的旧归档作为可追溯历史。常规召回和自动归档注入只使用当前有效条目，不读取历史副本；核心内容不得被改写。数据/审计边界、历史保全及实现能力仍须经 plan 核验；不新增 OryxOS 的矛盾检测引擎、自动保存触发器或历史管理界面。
 
 **用户核心体验**：用 OryxOS 一段时间后，Agent 自然会记住用户的偏好、项目信息、关键决策，下一次对话不需要重新解释。这是 Agent OS 区别于 chatbot 的核心体验。
+
+**007 实现范围补充（用户已批准）**：允许随 Mem0 部署受控 Python 适配组件及其事务化记忆/历史存储，补齐原版服务的完整读取、历史保全、操作恢复和内部审计缺口；同时提前接入需要的 HTTP 白名单。仍是 9 个 Maven 模块，Markdown 默认不依赖外部组件，不扩展为完整 Sandbox 或治理界面。批准设计与实现范围不代表真实部署已经通过安全或验收。
 
 ---
 
@@ -363,8 +370,8 @@ Tool 是 Agent 可以调用的外部能力。Agent 通过 LLM Function Calling �
 | `list_dir` | 文件 | 列出目录，受路径白名单限制 |
 | `shell` | Shell | 执行 bash 命令，有超时和命令白名单限制 |
 | `http_get` / `http_post` | HTTP | 发起 HTTP 请求，有域名白名单限制 |
-| `save_memory` | Memory | 把内容追加到 MEMORY.md |
-| `recall_memory` | Memory | 按关键词检索 MEMORY.md |
+| `save_memory` | Memory | 写入选定长期后端，scope 缺省为 archival |
+| `recall_memory` | Memory | 只检索归档；Markdown/SQLite 关键词，Mem0 可用语义检索 |
 
 #### Plugin Tool（业务方扩展）
 
@@ -514,8 +521,8 @@ OryxOS 作为开源项目，需要一个独立的主页作为对外门面，讲�
 
 ### 6.2 记忆和能力层
 
-- **Memory 自动抽取**：LLM 在对话结束时自动提取值得长期保留的事实写入 MEMORY.md
-- **Memory 语义检索**：集成向量数据库（Milvus、Qdrant、Weaviate、PostgreSQL pgvector），按语义相似度匹配
+- **Memory 自动抽取**：OryxOS 在对话结束时自动提取事实写入长期后端（不同于 007 显式 save 内的后端处理）
+- **自建 Memory 向量检索**：直接集成向量数据库并维护索引管线；007 可选自托管 Mem0 的语义检索已获核心范围批准，不属于此排除项
 - **情景记忆**：补齐 Memory 第三层，记录任务过程中修改的文件、决策、成果
 - **Memory Wiki**：结构化 claim/evidence、矛盾检测、新鲜度管理
 - **Skill 体系**：完整支持 SKILL.md 文件，兼容 agentskills.io 开放标准
@@ -690,9 +697,9 @@ Session 超时无消息 → 结束，对话历史归档可查
 | `last_active_at` | TIMESTAMP | 最后活跃时间 |
 | `archived_at` | TIMESTAMP | 归档时间（可空） |
 
-### Memory（文件形态，非数据库表）
+### Memory（按后端持久化）
 
-长期记忆是 `.oryxos/memory/MEMORY.md` 一个 Markdown 文件，按追加方式写入，无结构化 schema。扩展阶段引入向量库后，Memory 才有结构化的 embedding 存储。
+Markdown 默认使用 `.oryxos/memory/MEMORY.md`，核心/归档分区追加原文，不为文件引入数据库 schema。007 SQLite 后端新增 `memory_entries`：`id`（INTEGER 自增主键）、`scope`（VARCHAR(16)，CORE/ARCHIVAL）、`content`（TEXT）、`created_at`（TIMESTAMP），后三项非空，按 scope 建索引。不新增用户或租户字段。Mem0 使用已核验的自托管协议，通过稳定工作区身份和 scope 隔离数据；其远端字段不作为新的 OryxOS Session 模型。详见技术方案 §5、§9.2。
 
 ### Tool Invocation（记录每次 Tool 调用）
 
@@ -745,7 +752,7 @@ OryxOS 核心功能的实施按 **4 周节奏**组织，每周 3 小时，合计
 - Session 管理（内存版，第四周加 SQLite 持久化）
 
 **第二周**（3 小时）：Memory + Tool 体系
-- Memory 长期记忆极简版（MEMORY.md 文件、`save_memory` 和 `recall_memory` 两个内置 Tool、启动时整个文件注入 system prompt）
+- Memory 006 文件基线（两个 Tool、每轮注入）；007 三后端续篇另列计划与验收，不把新增范围计入原始 3 小时估算
 - 文件操作 Tool（read_file、write_file、list_dir）、Shell Tool（带白名单校验）
 - MCP Client 集成（连接外部 MCP server）
 
@@ -797,7 +804,7 @@ OryxOS 核心功能的实施按 **4 周节奏**组织，每周 3 小时，合计
 - [ ] Profile 配置和管理（支持多 Profile 并存）
 - [ ] Provider 抽象（至少跑通 DeepSeek 和 Kimi 两个）
 - [ ] ReAct 循环（多轮 Tool 调用、正确累积消息历史、达到最大迭代次数时正确终止）
-- [ ] Memory 长期记忆（save_memory 写入、recall_memory 关键词检索、启动时注入 system prompt）
+- [ ] Memory 长期记忆（每后端保存/归档查询/每轮注入/跨重启/Tool 审计；默认 Markdown 兼容 006，SQLite/自托管 Mem0 分别通过差异验收与数据门禁）
 - [ ] 内置 Tool（文件、HTTP、Shell、save_memory、recall_memory、notify）
 - [ ] Plugin Tool 接入（方式一零代码 SKILL.md + MCP 跑通；方式三 @Tool 注解示例跑通）
 - [ ] MCP Client 集成、CLI Channel
@@ -847,7 +854,7 @@ OryxOS 是基于 Java 实现的面向企业场景的 Agent OS，装在企业自�
 
 - **对接 LLM**：Provider 抽象，让 Agent 能调任意主流大模型，运行时切换无 lock-in
 - **ReAct 循环**：Agent 大脑，LLM 思考 + 工具执行，多步骤任务自主完成
-- **Memory 三层记忆**：核心阶段会话 + 长期 MEMORY.md，跨对话记住用户偏好和项目背景
+- **Memory 三层记忆**：核心阶段会话 + 长期记忆；006 默认文件，007 增加 SQLite / 自托管 Mem0 可选后端，跨对话记住偏好和项目背景
 - **Plugin 自定义工具 + 内置工具集**：内置文件/Shell/HTTP，业务方通过 SKILL.md + MCP 零代码扩展、MCP server 轻代码扩展、@Tool 注解重代码扩展
 - **Web Service**：REST API 覆盖会话管理、Agent 调用、Profile/Memory/Tool 信息查询、系统状态
 

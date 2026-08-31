@@ -54,6 +54,7 @@ $ARGUMENTS
    - 当节课件：`docs/class/第{N}节*.md`（glob 匹配）；
    - `docs/TechnicalSolution.md` 对应章节（映射表见下）；
    - 前序各代码课课件的"本节交付物"小节。
+   - 第 22 节已分为 006 文件基线与 007 三后端续篇：处理续篇时读课件第六部分和 `docs/decisions/007-memory-backends-scope.md`，不重复创建/改写已归档 006，不把其历史限制套到新批准范围。007 的协议/安全准入未关闭时不得进入 Mem0 实现。
 2. **依赖存在性检查**：对前序每节交付物清单里的核心类，在代码库里 grep/Glob 确认存在。任何缺失 → 停下报告"先做第 X 节"，不得跳节自造。
 3. **分支**：确认当前在该节的 feature 分支上（speckit-specify 的 before_specify hook 会建分支；若 hook 未配置，手动 `git checkout -b {NNN}-lesson{N}-<slug>`），不在 main/主干上直接开发。
 
@@ -66,7 +67,7 @@ $ARGUMENTS
 | 18 | §8.4（Channel）、§8.7（CLI）、§9.2（sessions） |
 | 19 | §6.8（Notify） |
 | 20 | §6.1~6.6（Tool/MCP） |
-| 22 | §5（Memory） |
+| 22 | §5（Memory）、§9.2（007 memory_entries）、§10（模块与安全接线边界） |
 | 24 | §6.7（Sandbox） |
 | 25 | §8.5（定时/会话身份） |
 | 26 | §7（Web Service） |
@@ -77,6 +78,8 @@ $ARGUMENTS
 ## 第 2 步：组装并执行 /speckit-specify
 
 用 Skill 工具调用 `speckit-specify`，参数按此骨架从**当节课件的一、二部分**提炼（只写 WHAT/WHY，不带类名和技术栈）：
+
+第 22 节的 007 续篇改从**第六部分及其范围记录**提炼；一至五部分仅作为 006 兼容基线，不重复当成待实现需求。
 
 ```text
 第{N}节需求：<模块名>——<一句话定位>
@@ -109,7 +112,7 @@ $ARGUMENTS
 | 18 | `OryxOsCli`+12 命令→oryxos-cli；`CliChannel`→oryxos-channel-cli；`SessionManager` 接口→oryxos-core，`Session` 实体+Repository→oryxos-storage |
 | 19 | notify 包（Adapter/Target/Webhook 实现/`NotifyTools`）→oryxos-tool |
 | 20 | `OryxTool`/`ToolResult`→oryxos-core；其余（Registry/内置 Tool/MCP）→oryxos-tool |
-| 22 | 全部→oryxos-memory |
+| 22 | `MemoryService`/`MemoryScope`→oryxos-core（保留 006 签名）；门面实现/LongTermMemory/MemoryTools/007 Store 与三后端→oryxos-memory；007 memory_entries 实体/仓储/迁移→oryxos-storage；安全组合接线在 plan 明确，禁止 memory→tool 依赖 |
 | 24 | sandbox 包→oryxos-tool |
 | 25 | `AgentScheduler`/`ScheduleConfig`→oryxos-core |
 | 26 | Controller/异常处理/static-admin→oryxos-web |

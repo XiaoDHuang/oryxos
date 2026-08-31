@@ -60,3 +60,18 @@ temp/
 
 # Maven wrapper local
 .mvn/wrapper/maven-wrapper.jar
+
+# 007 isolated verification and optional Python adapter
+/.verification/
+/integrations/mem0-adapter/.venv/
+/integrations/mem0-adapter/**/__pycache__/
+/integrations/mem0-adapter/**/*.py[cod]
+/integrations/mem0-adapter/.pytest_cache/
+/integrations/mem0-adapter/.ruff_cache/
+/integrations/mem0-adapter/.coverage*
+/integrations/mem0-adapter/htmlcov/
+/integrations/mem0-adapter/**/*.egg-info/
+/integrations/mem0-adapter/build/
+/integrations/mem0-adapter/local-data/
+/integrations/mem0-adapter/secrets/
+/integrations/mem0-adapter/*.db*

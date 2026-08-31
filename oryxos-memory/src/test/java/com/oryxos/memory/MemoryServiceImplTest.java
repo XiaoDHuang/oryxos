@@ -24,6 +24,26 @@ class MemoryServiceImplTest {
   @TempDir Path directory;
 
   @Test
+  void storeConstructorPreservesDelegationRolesAndFailures() {
+    LongTermMemoryStore store = mock(LongTermMemoryStore.class);
+    when(store.load()).thenReturn("## 核心记忆\n原文");
+    when(store.recall("语义查询")).thenReturn(List.of("匹配"));
+    MemoryServiceImpl service = new MemoryServiceImpl(store);
+    service.remember("归档", null);
+    verify(store).append("归档", MemoryScope.ARCHIVAL);
+    assertThat(service.recall("语义查询")).containsExactly("匹配");
+    Session session = new Session("s", "p");
+    session.append(new UserMessage("旧消息"));
+    session.append(new AssistantMessage("新消息"));
+    assertThat(service.buildContext(session, 1))
+        .satisfiesExactly(
+            message -> assertThat(message).isInstanceOf(SystemMessage.class),
+            message -> assertThat(message).isInstanceOf(AssistantMessage.class));
+    when(store.load()).thenThrow(new IllegalStateException("读取失败"));
+    assertThatThrownBy(() -> service.buildContext(session, 1)).hasMessage("读取失败");
+  }
+
+  @Test
   @DisplayName("remember和recall只委托长期记忆且null scope缺省归档")
   void delegatesRememberAndRecall() {
     LongTermMemory memory = mock(LongTermMemory.class);

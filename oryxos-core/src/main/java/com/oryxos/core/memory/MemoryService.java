@@ -29,10 +29,10 @@ public interface MemoryService {
   void remember(String content, MemoryScope scope);
 
   /**
-   * 按关键词检索归档记忆.
+   * 仅检索有效归档,不混入核心或历史副本;检索语义由选定后端定义.
    *
-   * @param keyword 检索关键词
-   * @return 按文件顺序排列的匹配行
+   * @param keyword 检索文本
+   * @return 按后端稳定规则排列的命中内容
    */
   List<String> recall(String keyword);
 }

@@ -1,5 +1,9 @@
 # Memory：实现与代码讲解
 
+> **2026-08-30 决议更新**：本课按两个 feature 交付。一至五部分保留 **006 文件式基线**的历史讲解及验收范围，已在 `3d60ee0` 归档；其中“核心阶段只用文件 / 不加表 / 不接 Mem0”等限制仅描述 006。用户已批准 **007 三后端续篇**，见第六部分及《技术方案》§5/§9。不能把下文旧限制继续套到 007，也不能把 006 绿灯当成三后端已实现。
+
+## 006 文件式基线（以下为已归档范围）
+
 上一节评审定了方向——接口先行、实现分阶段、核心阶段只做够用且可控的文件式记忆。这节把它变成能跑的代码：用一个稳定的 `MemoryService` 端口把引擎和实现隔开，长期记忆只落 `.oryxos/memory/MEMORY.md`，会话记忆继续复用既有 Session，两个内置 Tool 让 Agent 主动读写长期记忆。
 
 技术栈仍是 JDK 21 + Spring Boot 3.x + Spring AI 的 `@Tool` 注解。核心阶段不新增数据库表、不引入外部记忆服务或向量依赖。
@@ -197,4 +201,26 @@ harness 全绿后，剩下的人工确认：
 - Code review 确认没有写 `USER.md` 的代码路径，也没有 `memory_entries`、Mem0、向量检索或 `memory.backend` 抢跑。
 - `save_memory` / `recall_memory` 的实际执行继续产生 `tool_invocations` 审计记录。
 
-到这一步，Agent 不但会想（ReAct）、会动手（Tool），也能通过最短、可控的文件链路跨会话记住偏好。向量检索或外部记忆后端只有在第 21 节定义的真实信号出现后，才在扩展阶段重新立项。
+到这一步，006 文件链路具备跨会话记住偏好的能力。其后续范围按下面的新决议执行，不再沿用原先把所有后端演进放到扩展阶段的限制。
+
+---
+
+## 六、007 续篇：三后端，保留引擎端口
+
+007 采纳 Markdown / SQLite / 自托管 Mem0 方案，尚处于治理与拆解阶段。保留本课第一步的 `MemoryService` 三个签名及 `MemoryScope`，不改成返回 String 的另一套接口。
+
+**007 交付物（进入 specify/plan 的范围，不是现有代码清单）：**
+
+- memory：`LongTermMemoryStore`、`MarkdownMemoryStore`（复用 006 `LongTermMemory`）、`SqliteMemoryStore`、`Mem0MemoryStore`，以及现有门面/配置的适配。
+- storage：`memory_entries` 四字段（id/scope/content/created_at）、scope 索引、实体/仓储/显式迁移。
+- 配置：`memory.backend`（markdown 默认 / sqlite / mem0），唯一选择，非法值失败；Mem0 专属键由 plan 核定，无默认云连接。
+- 接线：boot 组合层安全接线需在 plan 明确。memory 不得依赖 tool 造成环；缺安全检查不得联网。
+- 测试：Store 共同契约（真实适配器）、三后端差异、选择隔离、跨重启、Prompt/Tool 审计回归及 Mem0 锁定版本受控冒烟。测试类名在 tasks 定稿，006 断言保留。
+
+**007 harness 的边界**：共同验证核心完整、scope、保存成功后下一轮可读、故障可观测；分别验证 Markdown 最近 4000 Java char、SQLite 最近 100 条、Mem0 核验后的分页与语义检索。不能假装三者关键词/排序/窗口完全相同；Mem0 默认测试替换 HTTP 传输而不是用内存假 Store 冒充适配器覆盖。
+
+**007 实现前必须核验**：真实自托管协议及版本、核心原文保留、全量分页、工作区身份、写入可见性、超时/重试幂等、出站白名单、服务全部模型/embedding/存储下游及其内部推理审计。课件中的 REST 路径不能直接当成事实。后端推理不能改写核心原文，OryxOS 不增加自动保存触发器、压缩、图谱或自建向量层。
+
+完整故事与 G1–G7 准入清单见 [007 范围拆解](../decisions/007-memory-backends-scope.md)。006 已完成不代表本续篇已完成。
+
+**007 plan 追加批准**：用户已批准 `integrations/mem0-adapter/` 受控 Python 组件及仅 HTTP 白名单提前接入，仍保持 9 个 Maven 模块。外部组件按自有协议使用固定 SDK 暂存推理，PG 原子提交有效状态、版本历史及操作结果；核心不推理、历史不参与常规召回。Java 的 MemoryOutboundGuard、受限错误映射和持久层转换类型，以及外部五表/协议均以 [007 plan](../../specs/007-memory-backends/plan.md) 配套契约为准；先验证机制harness，不能用原版REST或空安全检查替代。设计完成不等于运行验收。

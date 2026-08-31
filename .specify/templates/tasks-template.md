@@ -11,6 +11,8 @@ description: "Task list template for feature implementation"
 
 **Tests**: For OryxOS core features, independent automated acceptance tests are REQUIRED by the constitution. For non-core artifacts, include tests when required by the specification.
 
+**Memory backends**: When applicable, include common contract tests through each real adapter (fake HTTP transport is allowed, a replacement fake store is not adapter coverage), backend-specific retrieval/window tests, selector isolation, restart persistence, outbound-denial cases, and Tool audit evidence. Preserve the file baseline's assertions; do not treat 4000 characters, 100 rows, and remote pagination as identical semantics. Mem0 protocol/data-path/visibility decisions must be resolved in plan before implementation tasks are executed.
+
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
 ## Format: `[ID] [P?] [Story] Description`

@@ -5,7 +5,7 @@
 跨工具目录与 Skills 说明见 [`.agents/README.md`](.agents/README.md)。
 ## 项目现状
 
-Maven 9 模块骨架已初始化，可 `mvn clean package` 产出 `oryxos-boot` fat JAR；Provider、ReAct、CLI/Session 已实现，当前从第 19 节继续推进 Notify、Tool、Memory、Sandbox 与 Web。9 模块是核心阶段默认基线；任何模块新增、删除、改名或职责迁移都必须先写入对应 feature plan、获得用户显式批准，并同步本文件与 `docs/TechnicalSolution.md` 后才能实施。
+Maven 9 模块与 Provider、ReAct、CLI/Session、Notify、Tool 已有实现，006 文件式 Memory 已在 `3d60ee0` 归档。用户于 2026-08-30 批准 007 三后端 Memory 核心范围扩张，当前是治理同步与拆解阶段，尚未实现 SQLite/Mem0 长期后端。9 模块仍是默认基线；任何模块新增、删除、改名或职责迁移必须先写入 feature plan、获得用户显式批准，并同步本文件与 `docs/TechnicalSolution.md` 后才能实施。
 
 ## 一句话理解 OryxOS
 
@@ -37,11 +37,11 @@ JDK 21 + Spring Boot 3.x + Spring AI / Spring AI Alibaba + 自实现 ReAct loop 
 |---|---|---|
 | `oryxos-core` | 引擎 | `ReActLoop`、`PromptBuilder`、`ToolExecutor`、`ContextLoader`、`OryxTool`/`MemoryService` 端口、`MemoryScope`、Session/Profile 数据结构 |
 | `oryxos-provider` | 能力一 对接 LLM | `ProviderService`、provider name 到 `ChatModel` 显式映射、Function Calling 适配 |
-| `oryxos-memory` | 能力三 Memory | `MemoryServiceImpl`（三层统一门面实现）、`LongTermMemory`、`MemoryTools` |
+| `oryxos-memory` | 能力三 Memory | `MemoryServiceImpl`、兼容的 `LongTermMemory`、`MemoryTools`；007 新增 `LongTermMemoryStore`、Markdown/SQLite/Mem0 三实现与选择配置 |
 | `oryxos-tool` | 能力四 Tool | 内置 Tool（File/Shell/Http）、MCP Client、`ToolRegistry`、`SandboxChecker`，**三合一，不拆分** |
 | `oryxos-web` | 能力五 Web Service | `WebServer`、六个 ApiController、`GlobalExceptionHandler`、OpenAPI |
 | `oryxos-channel-cli` | 支撑 | CLI Channel（`oryxos chat`） |
-| `oryxos-storage` | 支撑 | SQLite 层：`sessions`、`tool_invocations`、`llm_calls` 三张表 |
+| `oryxos-storage` | 支撑 | SQLite 层：既有 `sessions`、`tool_invocations`、`llm_calls`；007 增加 `memory_entries` 实体、仓储与显式迁移 |
 | `oryxos-cli` | 支撑 | Picocli 12 个子命令入口 |
 | `oryxos-boot` | 支撑 | Spring Boot 启动、打 fat JAR |
 
@@ -87,7 +87,7 @@ java -jar oryxos-boot/target/oryxos-boot-*.jar serve --port 8080
 4. **Tool 注册用 `@Tool` 注解 + `OryxTool` 抽象层**，让 ReAct loop 不感知 Tool 来源（内置/MCP/Plugin 统一包装成 `OryxTool`）。
 5. **HTTP 层用 Spring MVC + virtual thread**，不用 WebFlux。
 6. **Sandbox 用 Path/Pattern 白名单**做应用层校验，**禁止使用 Java SecurityManager**（JDK 17 起废弃，JDK 21 已不可用，跟本项目 JDK 21+ 要求直接冲突）。
-7. **持久化用 SQLite + Spring Data JPA**，`MEMORY.md` 文件做长期记忆；`tool_invocations` 和 `llm_calls` 两张审计表**核心阶段就要写入落库**（不用等查询接口，也不能只写日志不落库）——这是"可审计"这个差异化能力的地基，day one 必须立起来。
+7. **Session/审计持久化用 SQLite + Spring Data JPA**，长期记忆默认 `MEMORY.md`，007 增加 SQLite / 自托管 Mem0 显式可选后端；`tool_invocations` 和 `llm_calls` **核心阶段就要落库**。选择外部记忆后端不免除数据不出域、网络白名单和审计义务。
 
 ## Provider 映射的一个具体陷阱
 
@@ -101,7 +101,7 @@ Provider、Memory、Tool 三个能力供养 ReAct 循环这个引擎，引擎跑
 |---|---|---|---|
 | 一 对接 LLM | Provider 抽象包一层 `ChatClient`，Agent 不感知具体模型 | 显式 name 映射、至少跑通 DeepSeek/Kimi 一家 | fallback、circuit breaker、hedge racing、adaptive routing |
 | 二 ReAct 循环 | Reason+Act，OryxOS 最核心的一段代码，约数十行 Java | 顺序执行 Tool 调用、MAX_ITERATIONS 默认 10（Profile 可覆盖）、消息累积进 Session | Tool 并行调用、上下文动态压缩、Agent 间任务委托 |
-| 三 Memory 三层记忆 | Agent 记得住偏好和历史 | 会话记忆（SQLite）+ 长期记忆（`MEMORY.md` 文件，`save_memory`/`recall_memory` 两个内置 Tool，关键词检索，超 4000 字截断） | 自动抽取、语义/向量检索、情景记忆、Memory Wiki |
+| 三 Memory 三层记忆 | Agent 记得住偏好和历史 | 会话 SQLite；长期默认 Markdown，007 增加 SQLite/自托管 Mem0；两个 Tool 不变，核心全量、归档按后端窗口注入 | OryxOS 自动提炼、自建向量索引、情景记忆、Memory Wiki、图谱与压缩 |
 | 四 Tool 体系 | 内置工具 + Plugin Tool 三档接入 | 内置：File 组 `read_file`/`write_file`/`list_dir` + Shell 组 `shell` + HTTP 组 `http_get`/`http_post`（共 6 个），加 Memory 的 `save_memory`/`recall_memory`（归 memory 模块但作为内置 Tool 注册）；Plugin 三档：零代码 `SKILL.md`+MCP（主推）、轻代码自写 MCP server、重代码 `@Tool` 注解；MCP Client 先做 stdio transport，SSE 放扩展 | Tool Policy、Tool LRU 加载、完整容器级 sandbox、MCP Server 暴露 |
 | 五 Web Service | REST API 对外唯一门面 | 核心 10 个端点（见下） | 认证/RBAC、SSE 流式、WebSocket、限流 |
 
@@ -125,7 +125,23 @@ Provider、Memory、Tool 三个能力供养 ReAct 循环这个引擎，引擎跑
 
 `call_id`/`session_id`、`provider`/`model`、`prompt_tokens`/`completion_tokens`/`total_tokens`、`latency_ms`、`status`、`started_at`/`completed_at`。
 
-**Memory：** 核心阶段无 schema，`MEMORY.md` 是纯文本按追加写入，不要为它建表或加结构化字段。
+**Memory：** Markdown 默认用分区 `MEMORY.md`，不为文件添加数据库 schema。007 SQLite 后端新增 `memory_entries`：`id`（INTEGER 自增主键）、`scope`（VARCHAR(16)，CORE/ARCHIVAL）、`content`（TEXT）、`created_at`（TIMESTAMP），后三项非空，索引 `idx_memory_scope`；不增加用户/租户字段。Mem0 字段按 plan 核验后的自托管协议映射，不发明第二套 Session。
+
+## Memory 三后端实施边界（007）
+
+- 保持 core 的 `List<Message> buildContext(Session, int)`、`remember(String, MemoryScope)`、`List<String> recall(String)` 签名；存储抽象/实现留在 memory，实体/仓储在 storage，仍为 9 模块。
+- `memory.backend` 在 `application.yaml` 启动时选 `markdown`（默认）/`sqlite`/`mem0`，重启生效。非法值失败、禁用后端零访问；切换不隐式迁移、删除、双写或静默降级。
+- scope 是 CORE/ARCHIVAL 分区，不改变当前工作区级共享边界；Mem0 的远端身份在 plan 明确映射，不擅自改为按 Profile/用户隔离。
+- 核心全量、不参与归档检索；Markdown 注入归档最近 4000 Java char，SQLite 最近 100 条。二者检索全量归档关键词；Mem0 允许语义检索，但分页、窗口、scope 和核心完整性必须验证，不能混用三后端断言。
+- 保留 006 `LongTermMemory` 的既有行为及回归断言；裁剪只影响注入，不删原始历史；保存成功后下一轮可见，远端异步处理必须有界等待或失败，不以最终一致静默放宽契约。
+- Mem0 默认关闭，仅自托管且完整数据路径（服务、模型、embedding、存储）和审计来源验证后可启用。每次涉外 I/O 前校验允许目标，缺安全接线拒绝；凭证用环境变量，不设默认云地址。
+- 现有 `tool → memory → core/storage`，memory 不得依赖 tool 中的 Sandbox。用户已批准 007 的 `MemoryOutboundGuard`（memory）、`HttpWhitelistSandbox`（tool）及 boot 组合接线；仅 HTTP 白名单提前实现，其余动作仍拒绝，不可用空检查绕过。
+- 不新增 OryxOS 自动保存触发器。007 clarify 已获用户批准：Mem0 在显式保存归档时自动提炼、合并和替换，原始输入与被合并/替换旧归档持久保留且可追溯；常规召回/自动归档注入只读当前有效条目，不读历史副本。保存成功须同时满足有效状态可读和历史保全；核心与本地后端原文规则不变。历史落位、失败恢复及数据/审计路径仍须在 plan 核验；Mem0 内部 LLM 调用不能假称已进 OryxOS `llm_calls`。
+- 006 原规格保留为历史基线；007 共同测试须经过真实适配器，远端可替换传输不可替换成假 Store。范围记录见 `docs/decisions/007-memory-backends-scope.md`，未完成 plan 核验不得实现 Mem0。
+
+- 用户已批准新增 `integrations/mem0-adapter/` 受控 Python 组件（尚未实现），随 Mem0 部署、不新增 Maven 模块。固定 SDK 的提炼只操作请求级暂存；外部 PostgreSQL/pgvector 中 `memory_namespaces`、`memory_operations`、`memory_current`、`memory_versions`、`memory_call_audits` 承载原子提交与历史。不得用原版 REST 直连替代自有 `oryx-memory-v1` 协议。
+- Java 的 `MemoryOperationException` 只携带固定分类与操作 UUID，工具适配器映射为不可重试失败；不得把错误字符串返回成工具成功。最终审计 status 沿用 failed，并在错误字段区别 timeout/outcome_unknown，不擅改审计端口或表。
+- 007 plan 的设计门禁与运行验收分开：设计契约闭合后可按 tasks 实现并验证；部署启用前必须完成真实组件、完整数据路径、Python/镜像安全与审计证据检查。批准范围不等于实际验收通过，不能仅凭 capabilities 声明或假测试放行。
 
 ## 关键流程（实现 ReActLoop / Controller 时对照步骤，不要自己发明顺序）
 
@@ -183,7 +199,7 @@ Provider、Memory、Tool 三个能力供养 ReAct 循环这个引擎，引擎跑
 | Provider | LLM API 的统一抽象 |
 | ReAct 循环 | Reason+Act，Agent 核心工作机制 |
 | Tool | 内置 Tool（OryxOS 自带）/ Plugin Tool（业务方扩展，三档） |
-| Memory | 会话记忆（SQLite）+ 长期记忆（`MEMORY.md`）+ 情景记忆（扩展阶段） |
+| Memory | 会话记忆（SQLite）+ 长期记忆（默认 Markdown，007 可选 SQLite/自托管 Mem0）+ 情景记忆（扩展阶段） |
 | Channel | 消息接入渠道，核心阶段只有 CLI；HTTP 不算 Channel，归 Web Service |
 | Session | 一次对话的上下文容器，Channel+User+Profile 联合标识 |
 | Sandbox | Tool 执行隔离，核心阶段是应用层白名单 |
@@ -198,7 +214,7 @@ Provider、Memory、Tool 三个能力供养 ReAct 循环这个引擎，引擎跑
 
 - **`SKILL.md`**：带 frontmatter（`name`、`description`、`trigger`、`required_tools`）+ 任务说明正文的 markdown。由 `oryxos-core` 的 `ContextLoader` 加载进 system prompt，**不是可执行 Tool**，OryxOS 不解析步骤、不做工作流引擎，一切交给 LLM 理解。Profile 用 `skills` 字段引用。
 - **`mcp_servers.yaml`**：声明每个 MCP server 的 `name`、`transport`、`command`、`env`。OryxOS 启动时连接、调 `tools/list` 拿工具列表、包装成 `OryxTool` 注册进 `ToolRegistry`。Profile 用 `mcp_servers` 字段引用。核心阶段只做 stdio transport。
-- **`application.yaml`**：Provider 的 API key / base URL、Sandbox 白名单（`file.allowed_paths` / `shell.allowed_commands` / `http.allowed_domains`）、SQLite 数据源（指向 `.oryxos/oryxos.db`）。
+- **`application.yaml`**：Provider 的 API key / base URL、Sandbox 白名单（`file.allowed_paths` / `shell.allowed_commands` / `http.allowed_domains`）、SQLite 数据源（指向 `.oryxos/oryxos.db`）；007 新增 `memory.backend`，Mem0 专属参数名和必填校验由 plan 锁定。
 
 ## 项目主页（核心阶段交付物，第四周做）
 
@@ -222,7 +238,7 @@ OryxOS 作为开源项目需要一个独立主页作为对外门面，讲清楚�
 
 主体开发用 **Spec-Kit**（constitution → specify → plan → tasks → implement），按 5 个 user story 组织，依赖顺序 `US-1 对接LLM → US-2 ReAct → (US-3 Memory ∥ US-4 Plugin Tool) → US-5 Web Service`，对应需求/技术方案定的 4 周 / 每周 3 小时 / 合计 12 小时节奏，每周末有可演示成果。每个 user story 完成后跑一次 `/speckit.analyze` 检查漂移（不能省略），并 **git commit 标记该 user story 完成**，方便随时回退到稳定状态。
 
-Constitution（`.specify/memory/constitution.md`）把本文与四份事实源中的硬约束固化为实施门禁；当前为 v2.0.0，明确 Profile 统一运行时契约、上下文资产非 Tool、状态外置，以及“9 模块为默认基线、显式审批后才可演进”。**不允许 AI agent 未经用户批准自行修改 constitution**；发现原则与事实源冲突时必须停下讨论并在同一变更中同步。Spec-Kit 产物主体开发后保留在仓库作为长期参考。
+Constitution（`.specify/memory/constitution.md`）当前为 v3.0.0，保持 Profile 统一契约、上下文资产非 Tool、状态外置和 9 模块审批基线；经用户批准，新增 007 三后端 Memory 范围及安全/兼容性门禁。**不允许 AI agent 未经用户批准自行修改 constitution**；原则与事实源冲突时必须停下讨论并同步。006 归档规格保留原验收范围，不能因宪法修订把新后端伪装成已交付。
 
 实施纪律（都是文档点名 AI agent 容易出问题的地方）：
 - **注释用中文**：代码注释（Javadoc/行内注释）与错误/审计消息一律简体中文，只写"为什么"；标识符、类名、方法名、`@author` 等保持英文。
