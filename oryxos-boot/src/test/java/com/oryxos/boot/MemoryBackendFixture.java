@@ -48,7 +48,7 @@ class MemoryBackendFixture extends MemorySystemIntegrationTest.RuntimeFixture {
     return runner(workspace, backend, scenario, source, null);
   }
 
-  /** mem0 运行额外接入真实HTTPS协议替身、出站Guard组合与白名单。 */
+  /** 为 mem0 运行额外接入真实HTTPS协议替身、出站Guard组合与白名单. */
   static ApplicationContextRunner runner(
       Path workspace,
       String backend,

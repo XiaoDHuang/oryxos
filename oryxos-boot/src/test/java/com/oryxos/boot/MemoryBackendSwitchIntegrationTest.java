@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-/** 三后端六个有向切换：目标从零开始、不隐式搬运或清库、回切后源数据原样可读。 */
+/** 三后端六个有向切换：目标从零开始、不隐式搬运或清库、回切后源数据原样可读. */
 @Tag("integration")
 class MemoryBackendSwitchIntegrationTest {
 

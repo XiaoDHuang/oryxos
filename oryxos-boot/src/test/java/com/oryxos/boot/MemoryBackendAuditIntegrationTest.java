@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-/** 三后端记忆操作的审计取证：统一工具链落库与远端各自终态分别成立，互不冒充。 */
+/** 三后端记忆操作的审计取证：统一工具链落库与远端各自终态分别成立，互不冒充. */
 @Tag("integration")
 class MemoryBackendAuditIntegrationTest {
 
@@ -59,7 +59,7 @@ class MemoryBackendAuditIntegrationTest {
                     Integer.class))
             .isEqualTo(1);
         assertThat(stub.currentContents()).contains("项目使用 Spring Boot");
-        int afterSuccess = stub.operationCount();
+        final int afterSuccess = stub.operationCount();
 
         // 拒绝：远端持久FAILED，工具链failed+固定分类与操作UUID，同ID不重放
         stub.nextFailureCode = "SERVICE_FAILURE";
@@ -89,7 +89,7 @@ class MemoryBackendAuditIntegrationTest {
 
         // 未知：请求被丢弃且服务端无记录；链路failed+未知分类+UUID，远端无可重放终态
         stub.dropNextRequest = true;
-        int beforeUnknown = stub.operationCount();
+        final int beforeUnknown = stub.operationCount();
         jdbc = runSaveTool(stub, "memory.mem0.operation-timeout=5s", "memory.mem0.read-timeout=3s");
         var unknownRow =
             jdbc.queryForMap(
@@ -105,7 +105,7 @@ class MemoryBackendAuditIntegrationTest {
         // 审计故障可观测：AUDIT_UNAVAILABLE 固定422失败，不触发重放
         stub.nextFailureCode = "AUDIT_UNAVAILABLE";
         stub.nextFailureStatus = 422;
-        int beforeAudit = stub.operationCount();
+        final int beforeAudit = stub.operationCount();
         jdbc = runSaveTool(stub);
         var auditRow =
             jdbc.queryForMap(

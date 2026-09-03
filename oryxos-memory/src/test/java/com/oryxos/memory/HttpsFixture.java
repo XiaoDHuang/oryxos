@@ -50,6 +50,7 @@ public final class HttpsFixture implements AutoCloseable {
     this.serverCertificate = serverCertificate;
   }
 
+  /** 创建一次性CA/服务端证书并启动HTTPS替身，不触碰系统信任库. */
   public static HttpsFixture open() {
     Path directory = null;
     char[] password = randomPassword();
@@ -93,16 +94,19 @@ public final class HttpsFixture implements AutoCloseable {
     }
   }
 
+  /** 返回已启用TLS的MockWebServer实例. */
   public MockWebServer server() {
     ensureOpen();
     return server;
   }
 
+  /** 返回仅信任本用例CA的客户端SSL上下文. */
   public SSLContext clientSslContext() {
     ensureOpen();
     return clientSslContext;
   }
 
+  /** 返回本用例CA证书，仅供断言链式校验. */
   public X509Certificate certificateAuthority() {
     ensureOpen();
     return certificateAuthority;
@@ -113,6 +117,7 @@ public final class HttpsFixture implements AutoCloseable {
     return serverCertificate;
   }
 
+  /** 解析替身上的绝对HTTPS URI，拒绝越出替身的路径. */
   public URI uri(String path) {
     ensureOpen();
     URI relative = URI.create(path);

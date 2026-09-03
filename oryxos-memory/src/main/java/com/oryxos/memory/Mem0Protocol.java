@@ -57,6 +57,15 @@ final class Mem0Protocol {
   private static final String REVISION_PAGINATION = "revision_pagination";
   private static final String MEMORY_EFFECTS_APPLIED = "memory_effects_applied";
   private static final String HISTORY_COMPLETE = "history_complete";
+  private static final String BUILD_VERSION = "build_version";
+  private static final String LIMITS = "limits";
+  private static final String LIMIT_CONTENT_MAX = "content_max_bytes";
+  private static final String LIMIT_REQUEST_MAX = "request_max_bytes";
+  private static final String LIMIT_RESPONSE_MAX = "response_max_bytes";
+  private static final String LIMIT_PAGE_SIZE_MAX = "page_size_max";
+  private static final String LIMIT_RECALL_TOP = "recall_top";
+  private static final String LIMIT_OPERATION_DEADLINE = "operation_deadline_seconds";
+  private static final String BUILD_VERSION_PATTERN = "[0-9a-f]{64}";
   private static final int MAX_RECALL_ITEMS = 20;
   private static final int MIN_TOKEN_CHARACTER = 33;
   private static final int MAX_PAGE_ITEMS = 100;
@@ -185,8 +194,8 @@ final class Mem0Protocol {
         STAGED_ENGINE,
         ATOMIC_HISTORY,
         REVISION_PAGINATION,
-        "build_version",
-        "limits");
+        BUILD_VERSION,
+        LIMITS);
     equal(value, "protocol", "oryx-memory-v1");
     equal(value, "sdk_version", "1.0.11+oryx.1");
     if (number(value, SCHEMA_VERSION) != 1
@@ -196,25 +205,25 @@ final class Mem0Protocol {
       throw invalid();
     }
     // 构建版本与固定限制是兼容性检查的一部分：缺省或漂移都不得通过。
-    if (!string(value, "build_version").matches("[0-9a-f]{64}")) {
+    if (!string(value, BUILD_VERSION).matches(BUILD_VERSION_PATTERN)) {
       throw invalid();
     }
-    JsonNode limits = value.get("limits");
+    JsonNode limits = value.get(LIMITS);
     fields(
         limits,
         Set.of(),
-        "content_max_bytes",
-        "request_max_bytes",
-        "response_max_bytes",
-        "page_size_max",
-        "recall_top",
-        "operation_deadline_seconds");
-    if (number(limits, "content_max_bytes") != MAX_TEXT_BYTES
-        || number(limits, "request_max_bytes") != MAX_REQUEST_BYTES
-        || number(limits, "response_max_bytes") != MAX_RESPONSE_BYTES
-        || number(limits, "page_size_max") != MAX_PAGE_ITEMS
-        || number(limits, "recall_top") != MAX_RECALL_ITEMS
-        || number(limits, "operation_deadline_seconds") != 30) {
+        LIMIT_CONTENT_MAX,
+        LIMIT_REQUEST_MAX,
+        LIMIT_RESPONSE_MAX,
+        LIMIT_PAGE_SIZE_MAX,
+        LIMIT_RECALL_TOP,
+        LIMIT_OPERATION_DEADLINE);
+    if (number(limits, LIMIT_CONTENT_MAX) != MAX_TEXT_BYTES
+        || number(limits, LIMIT_REQUEST_MAX) != MAX_REQUEST_BYTES
+        || number(limits, LIMIT_RESPONSE_MAX) != MAX_RESPONSE_BYTES
+        || number(limits, LIMIT_PAGE_SIZE_MAX) != MAX_PAGE_ITEMS
+        || number(limits, LIMIT_RECALL_TOP) != MAX_RECALL_ITEMS
+        || number(limits, LIMIT_OPERATION_DEADLINE) != 30) {
       throw invalid();
     }
   }

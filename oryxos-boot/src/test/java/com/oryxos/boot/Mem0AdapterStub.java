@@ -22,8 +22,8 @@ import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.RecordedRequest;
 
 /**
- * oryx-memory-v1 协议的内存替身：真实HTTPS与严格响应形状，供 boot 集成测试复用真实 Java Store 链路。
- * 语义只做协议保真（原文追加/包含匹配召回），不冒充真实提炼；真实模型效果由适配器侧黄金集证明。
+ * 适配器侧 oryx-memory-v1 协议的内存替身：真实HTTPS与严格响应形状，供 boot 集成测试复用真实 Java Store 链路。
+ * 语义只做协议保真（原文追加/包含匹配召回），不冒充真实提炼；真实模型效果由适配器侧黄金集证明.
  */
 final class Mem0AdapterStub implements AutoCloseable {
 
@@ -58,17 +58,17 @@ final class Mem0AdapterStub implements AutoCloseable {
   private final java.util.concurrent.atomic.AtomicInteger requests =
       new java.util.concurrent.atomic.AtomicInteger();
 
-  /** 记录到达替身的HTTP请求数，用于证明未选后端零网络访问。 */
+  /** 记录到达替身的HTTP请求数，用于证明未选后端零网络访问. */
   int requests() {
     return requests.get();
   }
 
-  /** 远端持久操作数（含失败终态），重放/重执行会改变它。 */
+  /** 远端持久操作数（含失败终态），重放/重执行会改变它. */
   int operationCount() {
     return operations.size();
   }
 
-  /** 当前有效条目正文，用于核对真实业务效果。 */
+  /** 当前有效条目正文，用于核对真实业务效果. */
   java.util.List<String> currentContents() {
     return entries.stream().map(Entry::content).toList();
   }
@@ -289,8 +289,8 @@ final class Mem0AdapterStub implements AutoCloseable {
         return json(200, replay);
       }
       if (nextFailureCode != null) {
-        String code = nextFailureCode;
-        int status = nextFailureStatus;
+        final String code = nextFailureCode;
+        final int status = nextFailureStatus;
         nextFailureCode = null;
         ObjectNode failure = envelope(id, kind, scope, requestHash);
         failure.put("state", "FAILED");
@@ -372,8 +372,8 @@ final class Mem0AdapterStub implements AutoCloseable {
         scoped = new ArrayList<>(scoped.subList(scoped.size() - 100, scoped.size()));
       }
       int end = Math.min(scoped.size(), offset + size);
-      List<Entry> pageItems = scoped.subList(offset, end);
-      boolean complete = end >= scoped.size();
+      final List<Entry> pageItems = scoped.subList(offset, end);
+      final boolean complete = end >= scoped.size();
       ObjectNode body = JSON.createObjectNode();
       body.put("request_id", UUID.randomUUID().toString());
       body.put("snapshot_id", token);

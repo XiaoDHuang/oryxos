@@ -431,3 +431,31 @@ check-prerequisites通过；requirements.md为16/16，无未完成项；无扩�
 - T069：README 三处 007 状态改为已实现/已验证/待封板的准确表述；quickstart.md 改为实施后的验证路径，含三后端测试、隔离部署与真实模型命令；适配器 README（T067）覆盖部署/Secret/hash绑定/TLS/维度/版本锁/NOOP与未知结果含义/历史只读核对/操作ID查询/安全停止。
 - US4 一致性审查：六条验收场景与边界用例逐条对照 T063–T065 及 US3 证据成立；不热切换、重启生效、非法后端可定位错误、审计不泄漏凭证、空目标与访问失败区分、窗口外归档可查询、重复输入可追溯均覆盖。
 - 提交前门禁：全量 `mvn test` BUILD SUCCESS（`t070-java-all.log` 见 .verification）。US4 完成。R5 封板回归（T071–T075）仍未执行，Mem0 不可默认启用。
+
+## T072最终绑定与扫描核验（2026-09-04）
+
+- 回核结果：build-manifest 与当前源码/锁图/构建证据逐项一致（build_manifest.py 重算 + test_deployment_build 4/4）；适配器 `oryxos/mem0-adapter:t049-5f03f941a037`（digest `sha256:b1430fff…`，镜像ID同值），PG 派生镜像 `sha256:218ac197…`；SDK wheel `a3bc3ee9…`，uv.lock `225d3ae7…`，源码清单 `5f03f941…`。
+- 扫描：Trivy 0.73.0（官方 zip，SHA256 `d2d3ad52…`；exe `3f8d0a3f…`），漏洞库 UpdatedAt `2026-09-03T07:08:48Z`；本地 tar 离线扫描、遥测关闭、未上传镜像。组合门禁（含 493 条逐项处置台账）passed 退出 0（`t068-image-audit-gate-full.json`）。
+- Python 依赖审计沿用上轮来源绑定结果（71 项，0 未处置，`t049-dependency-audit.log`）；T073 将重跑最终全量。无 NVD key 时 CI 的 OWASP 跳过路径不算完整 verify（ci.yml 已注明）。T072 完成，当前 80/85。
+
+## T073全量最终回归（2026-09-04，主模型执行）
+
+- `mvn clean verify --batch-mode`（不跳任何插件，OWASP 经环境注入 NVD key 真实执行，过程不回显；surefire Windows fork 跨盘崩溃以 MAVEN_OPTS java.io.tmpdir 同盘修复）：**BUILD SUCCESS**（`t073-mvn-clean-verify.log`）。OWASP 结果：spring-core 6.2.19 的 7 条 ≥7.0 告警逐条以代码级不可达证据处置于 `dependency-check-suppressions.xml`（无 SSE/WebFlux/WebSocket/SpEL编译器/数据绑定路径；6.2.x 无修复版，Framework 7 升级属平台决策另议）；后续 NVD 增量新增 4 条 <7.0（spring-ai-model/Spring MVC/FreeMarker/Content-Disposition）均低于 failBuildOnCVSS 阈值并保持可见。
+- 显式 Java integration：`mvn test -Dtest.excludedGroups=`（含真实 MCP stdio 哨兵变量显式提供）**BUILD SUCCESS**（`t073-java-integration.log`），全部模块 0 失败。
+- Python：`pytest -m 'not integration'` 377/377（`t073-py-unit.log`）；最终镜像 t049-5f03f941a037 的真实模型部署上 `tests/integration` **74/74**（`t073-py-integration.log`，含事务/恢复/查询/API/冒烟/黄金集）。
+- 依赖审计重跑：71 项依赖、原始 1 项已证实回移修复、未处置 0（证据目录 `dependency-audit/20260903T185743Z-e16e778f-…`）。镜像门禁 passed（t068）。quickstart 各命令与上述真实运行一一对应。
+- T073 完成，当前 81/85。
+
+## T074最终实现一致性审查（2026-09-04，主模型执行）
+
+- 任务↔证据映射：85 项任务中 83 项完成；每项在验收台账有对应记录（早期 US1/US2/US3a 任务由故事分节承载，T034 起逐任务编号记录）。T074/T075 为本轮收口任务。
+- 规格↔实现：US1–US4 验收场景与边界用例逐条有测试/运行证据；plan 的 R1–R4 门禁全部通过，R5 的全仓证据在本轮补齐（无跳插件 `mvn clean verify` SUCCESS + 显式 integration SUCCESS + Python 377/377 与真实集成 74/74 + 依赖审计 0 未处置 + 镜像门禁 passed）。
+- 纪律核验：仍为 9 模块与 Profile 统一契约；默认 Markdown、未选后端零访问；注释/审计消息中文；无 SecurityManager；审计表落库；无默认外发；SDK 仅获准 FAISS 回移；未删既有断言（修正过的断言均为断言自身的错误前提，协议级断言未降）。
+- 审查新发现均已补为可追踪任务并修复（T080–T085），无悬而未决缺口；PMD 数据流引擎在个别方法上打印 "aktStatus is NULL: maximum Iterations exceeded"（15 次）属 PMD 引擎层限制，构建无 PMD 违例，此点如实记录不视为覆盖证明，后续 PMD/规则集升级属平台议题。
+- T074 完成，当前 82/85。
+
+## T075归档收口（2026-09-04，主模型执行）
+
+- R1–R5 全通过，007 归档：85/85。故事提交：US1 `2a63e58`、US2 `5333e77`、US3 `83a8a50`、US4 `3667d54`；最终归档提交紧随本条（含 suppressions/静态修复/台账最终状态）。
+- 剩余人工项（不属本 feature 验收缺口）：生产启用 Mem0 需企业获准内网环境与部署方 Secret/库/出口策略；Java 平台侧 Spring Framework 6.2.x 无修复版本项留待 Spring Boot 4 平台决策；PMD 数据流引擎警告属 PMD 版本议题。三项均已记录，不构成 007 完成造假。
+- 只提交本 feature 变更，不自动 push。

@@ -121,3 +121,5 @@ G1–G7 的设计问题已由获准方案闭合，可以据此生成实现/验�
 - [TechnicalSolution §5/§9/§10](../TechnicalSolution.md)：端口、存储模型、配置与依赖方向。
 - [AiProgrammingGuide §3.2/§4.3](../AiProgrammingGuide.md)：治理修订与故事拆解。
 - [Constitution v3.0.0](../../.specify/memory/constitution.md)：硬门禁。
+
+2026-09-04收口：R1–R5 全部通过，007 归档完成（85/85）。US3 提交 `83a8a50`，US4 提交 `3667d54`，最终归档提交见 git 日志。Mem0 后端保持默认关闭；生产启用仍属部署方动作：需企业获准的内网模型/embedding、部署人员预置库与 Secret、出口策略落地。真实模型验收使用用户批准的本地 Ollama 替代环境（mistral-nemo:12b + bge-m3，本机回环），不代表已完成企业内网环境验收。

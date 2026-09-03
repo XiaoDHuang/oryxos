@@ -4,7 +4,7 @@
 
 **Branch**: `codex/007-memory-backends` | **Created**: 2026-08-30
 
-**Status**: Implementing — 完成T001–T065、T076–T085，共79/85。T049镜像安全门禁passed；T061经用户批准的Ollama本地真实模型（qwen2.5:7b-instruct+bge-m3，GPU，本机回环）最小冒烟通过：真实提炼/原子历史/逐调用审计/重启/语义召回。US4 的 T066–T070 与 R4/R5 仍未通过，Mem0不可启用。
+**Status**: Done — 2026-09-04 归档。85/85 完成（含 T076–T085 补救）；R1–R5 全通过：镜像/依赖逐项处置门禁 passed、无跳插件 mvn clean verify SUCCESS、显式 integration SUCCESS、Python 377/377 与真实集成 74/74、真实本地模型黄金集通过。
 
 **Tests**: 规格与宪法要求自动验收，因此测试不是可省项。测试先于对应实现；必要接口骨架就位后，应观察行为断言失败，而不是只记录缺类导致的编译错误。不得删断言、Disabled、降低阈值或用假 Store 替代真实适配器。
 
@@ -152,10 +152,10 @@
 **Purpose**: 封板前统一工程化和最终证据，不用源码存在性替代运行通过。
 
 - [X] T071 更新 `.github/workflows/ci.yml`，保持Java门禁并加入外部组件frozen-lock单测/隔离PG集成/依赖安全验证；清楚区分快门禁和封板全量门禁，无NVD key时的跳过路径不能算完整verify。真实模型测试仅用显式获准环境，CI不默认访问云端或注入业务Secret。（依赖 T070）
-- [ ] T072 回核 `integrations/mem0-adapter/build-manifest.json`、`integrations/mem0-adapter/uv.lock` 与 `integrations/mem0-adapter/Dockerfile` 的源码/依赖/镜像摘要，执行获准的本地或内网镜像扫描、记录工具版本/规则库时间/结果到 `specs/007-memory-backends/acceptance.md`；不上传私有镜像，缺工具或未处置问题则R1不通过。（依赖 T071）
-- [ ] T073 按用户最新要求由主模型执行最终回归：`mvn clean verify`（不跳插件）、显式Java integration、Python unit/integration、来源绑定的完整依赖审计及quickstart验收；将命令、源码/镜像版本和实际结果写入 `acceptance.md`，保留原始扫描和长日志，不以补丁验证替代真实运行门禁。（依赖T072）
-- [ ] T074 由主模型完成最终实现一致性审查，逐项核对 `specs/007-memory-backends/spec.md`、`specs/007-memory-backends/plan.md`、`specs/007-memory-backends/tasks.md` 与实际代码/证据；发现缺口追加可追踪补救任务，不删旧断言或直接改勾选，修复后重跑受影响门禁。（依赖 T073）
-- [ ] T075 仅在R1–R5全通过后收口 `specs/007-memory-backends/acceptance.md`、`specs/007-memory-backends/spec.md` 和 `docs/decisions/007-memory-backends-scope.md` 状态，记录各故事提交与剩余人工项，完成本地归档提交；只提交本feature明确变更，不自动push，未验收项存在则不得标007完成。（依赖 T074）
+- [X] T072 回核 `integrations/mem0-adapter/build-manifest.json`、`integrations/mem0-adapter/uv.lock` 与 `integrations/mem0-adapter/Dockerfile` 的源码/依赖/镜像摘要，执行获准的本地或内网镜像扫描、记录工具版本/规则库时间/结果到 `specs/007-memory-backends/acceptance.md`；不上传私有镜像，缺工具或未处置问题则R1不通过。（依赖 T071）
+- [X] T073 按用户最新要求由主模型执行最终回归：`mvn clean verify`（不跳插件）、显式Java integration、Python unit/integration、来源绑定的完整依赖审计及quickstart验收；将命令、源码/镜像版本和实际结果写入 `acceptance.md`，保留原始扫描和长日志，不以补丁验证替代真实运行门禁。（依赖T072）
+- [X] T074 由主模型完成最终实现一致性审查，逐项核对 `specs/007-memory-backends/spec.md`、`specs/007-memory-backends/plan.md`、`specs/007-memory-backends/tasks.md` 与实际代码/证据；发现缺口追加可追踪补救任务，不删旧断言或直接改勾选，修复后重跑受影响门禁。（依赖 T073）
+- [X] T075 仅在R1–R5全通过后收口 `specs/007-memory-backends/acceptance.md`、`specs/007-memory-backends/spec.md` 和 `docs/decisions/007-memory-backends-scope.md` 状态，记录各故事提交与剩余人工项，完成本地归档提交；只提交本feature明确变更，不自动push，未验收项存在则不得标007完成。（依赖 T074）
 
 ## Dependencies & Execution Order
 

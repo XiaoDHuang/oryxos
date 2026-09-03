@@ -16,4 +16,55 @@
         <cpe regex="true">cpe:2\.3:a:apache:tomcat:10\.1\..*</cpe>
         <cve>CVE-2026-66299</cve>
     </suppress>
+    <!-- 007 R5 复核（2026-09-04）：spring-core 6.2.19 的 7 条 Spring Framework 告警在 OryxOS 均不可达。
+         Spring Boot 3.5.x 固定使用 6.2.x，6.2.x 无修复版本（上游修复在 7.0.9 起）；
+         升级到 Spring Boot 4 / Framework 7 属于平台级决策，不在本 feature 范围。逐条依据： -->
+    <suppress>
+        <notes><![CDATA[
+          CVE-2026-59313（SSE 流损坏）与 CVE-2026-47890（SSE+view fragments）：OryxOS 核心阶段只有同步阻塞
+          Spring MVC REST，明确不实现 SSE/流式（技术方案决策三）。无 SSE 端点即不可达。
+        ]]></notes>
+        <cpe regex="true">cpe:2\.3:a:.*:spring_framework:6\.2\..*</cpe>
+        <cve>CVE-2026-59313</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[CVE-2026-47890 同上：无 SSE/view fragments 使用路径。]]></notes>
+        <cpe regex="true">cpe:2\.3:a:.*:spring_framework:6\.2\..*</cpe>
+        <cve>CVE-2026-47890</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+          CVE-2026-47892（WebFlux functional endpoint 预检谓词绕过）、CVE-2026-47891（WebFlux+Aalto XML
+          maxInMemorySize）、CVE-2026-47893（WebFlux WebSocket 异常泄头）：OryxOS 不使用 WebFlux，
+          无函数式端点、无 WebSocket、无 XML 请求解析（技术方案决策五：Spring MVC）。
+        ]]></notes>
+        <cpe regex="true">cpe:2\.3:a:.*:spring_framework:6\.2\..*</cpe>
+        <cve>CVE-2026-47892</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[CVE-2026-47891 同上：无 WebFlux/Aalto 路径。]]></notes>
+        <cpe regex="true">cpe:2\.3:a:.*:spring_framework:6\.2\..*</cpe>
+        <cve>CVE-2026-47891</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[CVE-2026-47893 同上：无 WebFlux/WebSocket 路径。]]></notes>
+        <cpe regex="true">cpe:2\.3:a:.*:spring_framework:6\.2\..*</cpe>
+        <cve>CVE-2026-47893</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+          CVE-2026-59283（SpEL SimpleEvaluationContext+编译器防护绕过）：OryxOS 不求值用户输入的 SpEL，
+          未启用 SpEL 编译器（全仓无 SimpleEvaluationContext/SpelExpressionParser 调用点）。
+        ]]></notes>
+        <cpe regex="true">cpe:2\.3:a:.*:spring_framework:6\.2\..*</cpe>
+        <cve>CVE-2026-59283</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+          CVE-2026-59282（数据绑定用户属性路径 DoS）：OryxOS Web 端点只接 @RequestBody JSON（Jackson），
+          不使用 @ModelAttribute/WebDataBinder 属性路径绑定（全仓无相关调用点）。
+        ]]></notes>
+        <cpe regex="true">cpe:2\.3:a:.*:spring_framework:6\.2\..*</cpe>
+        <cve>CVE-2026-59282</cve>
+    </suppress>
 </suppressions>

@@ -4,7 +4,7 @@
 
 **Created**: 2026-08-30
 
-**Status**: Implementing — 当前64/80，Docker已恢复；Python unit377/377、PG集成65/65、真实容器HTTPS/SDK/PG用例8/8通过。T049镜像安全仍未通过，T061缺获准内网模型/embedding；007未完成，Mem0不可启用，所有工作由主模型执行。
+**Status**: Done — 2026-09-04 归档。85/85 任务完成，R1–R5 全通过；各故事提交见 acceptance.md；Mem0 后端默认关闭，生产启用仍需企业获准环境与部署人员注入 Secret。
 
 **Input**: User description: "在已归档的 006 文件式 Memory 基线上，采用已批准的方案 B：默认 Markdown、可选 SQLite 和企业自托管 Mem0，保持现有记忆使用方式与运行时契约，先同步治理再推进 007 的正式规格。"
 
