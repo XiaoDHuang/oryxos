@@ -5,7 +5,7 @@
 跨工具目录与 Skills 说明见 [`.agents/README.md`](.agents/README.md)。
 ## 项目现状
 
-Maven 9 模块与 Provider、ReAct、CLI/Session、Notify、Tool 已有实现，006 文件式 Memory 已在 `3d60ee0` 归档。007 于 2026-08-31 进入实现：US1 默认 Markdown 兼容已在 `2a63e58` 提交，SQLite 后端已实现并通过本地验收；Mem0客户端与受控适配服务已进入分层验证，尚未通过运行准入。实际任务与证据见 `specs/007-memory-backends/tasks.md`、`acceptance.md`，不能把本地后端绿灯当作 007 完成。9 模块仍是默认基线；任何模块新增、删除、改名或职责迁移必须先写入 feature plan、获得用户显式批准，并同步本文件与 `docs/TechnicalSolution.md` 后才能实施。
+Maven 9 模块与 Provider、ReAct、CLI/Session、Notify、Tool 已有实现，006 文件式 Memory 已在 `3d60ee0` 归档。007 Memory 三后端已于 2026-09-04 归档（`d040713`，85/85，R1–R5 全通过）：Markdown 默认兼容、SQLite 本地后端、显式可选的自托管 Mem0（受控 Python 适配器 + 独立 PG/pgvector，默认关闭）；实际任务与证据见 `specs/007-memory-backends/tasks.md`、`acceptance.md`，不能把本地后端绿灯当作 007 完成。9 模块仍是默认基线；任何模块新增、删除、改名或职责迁移必须先写入 feature plan、获得用户显式批准，并同步本文件与 `docs/TechnicalSolution.md` 后才能实施。
 
 ## 一句话理解 OryxOS
 
@@ -129,7 +129,7 @@ Provider、Memory、Tool 三个能力供养 ReAct 循环这个引擎，引擎跑
 
 ## Memory 三后端实施边界（007）
 
-- 当前实施进度：US3已稳定提交（83a8a50），实际71/85。T062一致性审查追加并完成T081–T085补救（capabilities构建版本/固定限制、RECALL单快照与revision单调、暂存元数据真实时间戳、提交期真实断连、测试网络收窄）。镜像安全：适配器移除运行层pip、PG换官方trixie基础（17.11/0.8.6不变）并应用发行版修复+移除gosu全程999运行，493条发现全部逐项处置。真实模型环境为用户批准的Ollama本地方案：qwen2.5:7b-instruct+bge-m3（1024维），GPU推理全程本机回环，经TLS代理进隔离网；冒烟覆盖真实提炼/原子历史/审计/重启/语义召回。T066黄金集与R4/R5仍未通过，Mem0不可启用；PMD数据流诊断继续留待R5核验。
+- 当前实施进度：007 已归档（85/85，R1–R5 全通过，提交 2a63e58/5333e77/83a8a50/3667d54/d040713）。Mem0 生产启用仍需企业获准内网环境与部署方 Secret/库/出口策略；真实模型验收用的是用户批准的本地 Ollama 替代环境（mistral-nemo:12b + bge-m3，temperature=0，本机回环）。
 
 - 2026-08-31用户批准对固定Mem0 1.0.11回移官方CVE-2026-7597补丁，保留原提炼算法；仅FAISS源码与诚实构建元数据可变化，受控版本为1.0.11+oryx.1。来源/产物摘要、真实反序列化回归及完整原始扫描必须保留；只对已证实修复的本构建目标告警作处置，未知告警仍失败，不使用全局忽略。细则见007的SDK安全回移契约。用户最新要求代码、测试及最终回归全部由主模型执行，不再调度Spark。
 
