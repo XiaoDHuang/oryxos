@@ -89,11 +89,15 @@ public final class ToolExecutor {
     }
     for (int attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       ToolResult result = tool.execute(call.arguments());
-      if (Thread.currentThread().isInterrupted()) {
-        return ToolResult.fail(call.name(), "工具执行已中断");
-      }
       if (result == null || !call.name().equals(result.toolName())) {
         return ToolResult.fail(call.name(), "工具返回了无效结果");
+      }
+      // 已验证的不可重试失败可能对应未知外部副作用，中断不能抹掉分类与操作编号。
+      if (!result.success() && !result.retryable()) {
+        return result;
+      }
+      if (Thread.currentThread().isInterrupted()) {
+        return ToolResult.fail(call.name(), "工具执行已中断");
       }
       if (result.success() || !result.retryable() || attempt == MAX_RETRIES) {
         return result;

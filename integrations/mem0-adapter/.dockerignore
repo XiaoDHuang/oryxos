@@ -8,6 +8,8 @@
 htmlcov
 **/*.egg-info
 build
+!build/runtime-requirements.txt
+!build/source-manifest.txt
 dist
 local-data
 secrets
@@ -18,3 +20,7 @@ secrets
 **/*.key
 Dockerfile*
 .dockerignore
+!Dockerfile
+!.dockerignore
+vendor/upstream/
+tests/fixtures/tls-unit.json

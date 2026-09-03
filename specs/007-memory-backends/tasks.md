@@ -4,7 +4,7 @@
 
 **Branch**: `codex/007-memory-backends` | **Created**: 2026-08-30
 
-**Status**: Implementing — 用户于2026-08-31确认实施；按任务依赖验证后勾选，证据见acceptance.md。
+**Status**: Implementing — 完成T001–T062、T076–T085，共71/85。T049镜像安全门禁passed；T061经用户批准的Ollama本地真实模型（qwen2.5:7b-instruct+bge-m3，GPU，本机回环）最小冒烟通过：真实提炼/原子历史/逐调用审计/重启/语义召回。T062审查补救T081–T085已并入；US4与R4/R5仍未通过，Mem0不可启用。
 
 **Tests**: 规格与宪法要求自动验收，因此测试不是可省项。测试先于对应实现；必要接口骨架就位后，应观察行为断言失败，而不是只记录缺类导致的编译错误。不得删断言、Disabled、降低阈值或用假 Store 替代真实适配器。
 
@@ -13,7 +13,9 @@
 - 下列路径均相对仓库根目录 `D:/project/AI-Coding/OryxOs`；路径是计划修改对象，不代表已经存在。禁止改写 `specs/006-memory/`，保留 006 的公共入口和回归断言。
 - `[P]` 仅表示所列前置完成后可以并行的不同文件工作，不授权自动创建新任务/代理。未标记任务按阶段顺序推进；同一文件的跨阶段任务串行执行。
 - US 编号/优先级沿用 spec。US4 虽为 P1，但最终闭环依赖 US3；按 plan 拓扑顺序 US1→US2→US3→US4 收口，US4 的共同断言提前在基础和各故事内建立。
-- 代码和测试用例由主模型编写；最后回归执行交 Spark，只运行命令、收集输出，不改源码。若指定模型无法使用，明确报告并等用户安排，不假称已经执行。
+- 按2026-08-31最新确认，代码、测试用例及包括T073在内的所有回归均由主模型执行，不再调度Spark。
+- 2026-09-01用户明确要求跳过PG/T045、继续其他内容且不得关机重启；因此允许执行已有独立契约/红灯覆盖的T054/T056/T059，不回填或伪造T045/T051，后续Store/整体门禁仍按原依赖验收。
+- 2026-09-01用户随后明确要求执行PG/T045；在不关机重启的约束下，以WSL1隔离Ubuntu建立精确PG 17.11/pgvector 0.8.6一次性测试库并通过T033真实fixture。T045按用户点名作为T044前的顺序例外完成；T034–T044仍保持未完成，不能把协议单测或fixture绿灯当作事务/HTTP服务验收。
 - 注释与错误/审计消息遵守仓库简体中文约定，标识符/测试方法保持英文；Specify CLI继续锁0.14.2，九模块和已批准公开契约不变，不新增社区extension。
 - 每个任务只有实现和对应验证完成才勾选；长日志放 `.verification/007-memory-backends/`，稳定结论、命令、结果、源码版本及证据路径写入 `specs/007-memory-backends/acceptance.md`。缺真实环境/凭证时标未执行，不能拿 skip/fake 当通过。
 - 每故事结束做一致性审查并按 AGENTS 本地提交稳定边界；不得 stage 其他工作或推送。用户已于2026-08-31确认实施，提交只包含本feature范围。
@@ -84,51 +86,51 @@
 
 ### US3a: 固定依赖与暂存机制
 
-- [ ] T024 [US3] 建立 `integrations/mem0-adapter/pyproject.toml`、`integrations/mem0-adapter/.python-version`、`integrations/mem0-adapter/src/oryx_mem0/__init__.py` 并生成 `integrations/mem0-adapter/uv.lock`；固定Python3.12.14、Mem01.0.11源码SHA144627c4ce5bc4db6acac17cbd158065f2b27a8d及plan依赖；在 `integrations/mem0-adapter/tests/conftest.py` 确保SDK导入前设置临时MEM0_DIR和禁遥测、拒绝默认网络，区分unit/integration，不能靠已缓存导入掩盖副作用。（依赖 T023）
-- [ ] T025 [P] [US3] 新建 `integrations/mem0-adapter/tests/unit/test_staged_engine.py` 和 `integrations/mem0-adapter/tests/fixtures/sdk_fingerprint.json`，验证固定SDK摘要、无真实存储/核心推理、全部写方法暂存、合法NONE→NOOP、坏JSON/吞错/越scope拒绝；补facts第65项、动作第129项、生成内容超32KiB及转义膨胀负例，均须提交前fatal。（依赖 T024）
-- [ ] T026 [P] [US3] 新建 `integrations/mem0-adapter/tests/unit/test_providers.py`，用受控传输/审计替身测试开始审计失败不发请求、结束失败置fatal、Provider坏结果不伪装空事实、TLS/origin/期限和Secret脱敏；验证内部请求/响应实际字节超1MiB在I/O/解析边界拒绝。（依赖 T024）
-- [ ] T027 [US3] 实现 `integrations/mem0-adapter/src/oryx_mem0/engine/staging.py`：快照search/get加overlay；所有写/history仅暂存，reset/delete_col拒绝；校验归属、生成条目32KiB和暂存变更128项上限，超限置fatal，不能透传业务库写入。（依赖 T025）
-- [ ] T028 [US3] 实现 `integrations/mem0-adapter/src/oryx_mem0/engine/providers.py` 和 `integrations/mem0-adapter/src/oryx_mem0/audit/calls.py`，受控审计/LLM/embedding严格校验；内部请求/响应各1MiB、facts≤64、动作含NONE≤128，超限先fatal不伪装NOOP；禁隐式云/proxy/OpenRouter，不依赖SDK callback。（依赖 T026）
-- [ ] T029 [US3] 实现 `integrations/mem0-adapter/src/oryx_mem0/engine/staged_memory.py`，不调用原版构造器/from_config/public add，只注入已核验字段后执行固定归档调用点；逐项对账动作/暂存/history/结果，对NONE使用其特例证据，核心走原文事务。（依赖 T027、T028）
-- [ ] T030 [US3] **机制硬门禁**：运行T025/T026实际固定SDK测试和锁定依赖安全检查，在 `specs/007-memory-backends/acceptance.md` 记录SDK摘要、零真实写入/零默认网络、NONE成功与fatal负例；失败不得进入US3b，不升级到ADD-only、不换假Store。（依赖 T029）
+- [X] T024 [US3] 建立 `integrations/mem0-adapter/pyproject.toml`、`integrations/mem0-adapter/.python-version`、`integrations/mem0-adapter/src/oryx_mem0/__init__.py` 并生成 `integrations/mem0-adapter/uv.lock`；固定Python3.12.14、Mem01.0.11源码SHA144627c4ce5bc4db6acac17cbd158065f2b27a8d及plan依赖；在 `integrations/mem0-adapter/tests/conftest.py` 确保SDK导入前设置临时MEM0_DIR和禁遥测、拒绝默认网络，区分unit/integration，不能靠已缓存导入掩盖副作用。（依赖 T023）
+- [X] T025 [P] [US3] 新建 `integrations/mem0-adapter/tests/unit/test_staged_engine.py` 和 `integrations/mem0-adapter/tests/fixtures/sdk_fingerprint.json`，验证固定SDK摘要、无真实存储/核心推理、全部写方法暂存、合法NONE→NOOP、坏JSON/吞错/越scope拒绝；补facts第65项、动作第129项、生成内容超32KiB及转义膨胀负例，均须提交前fatal。（依赖 T024、T079）
+- [X] T026 [P] [US3] 新建 `integrations/mem0-adapter/tests/unit/test_providers.py`，用受控传输/审计替身测试开始审计失败不发请求、结束失败置fatal、Provider坏结果不伪装空事实、TLS/origin/期限和Secret脱敏；验证内部请求/响应实际字节超1MiB在I/O/解析边界拒绝。（依赖 T024、T079）
+- [X] T027 [US3] 实现 `integrations/mem0-adapter/src/oryx_mem0/engine/staging.py`：快照search/get加overlay；所有写/history仅暂存，reset/delete_col拒绝；校验归属、生成条目32KiB和暂存变更128项上限，超限置fatal，不能透传业务库写入。（依赖 T025）
+- [X] T028 [US3] 实现 `integrations/mem0-adapter/src/oryx_mem0/engine/providers.py` 和 `integrations/mem0-adapter/src/oryx_mem0/audit/calls.py`，受控审计/LLM/embedding严格校验；内部请求/响应各1MiB、facts≤64、动作含NONE≤128，超限先fatal不伪装NOOP；禁隐式云/proxy/OpenRouter，不依赖SDK callback。（依赖 T026）
+- [X] T029 [US3] 实现 `integrations/mem0-adapter/src/oryx_mem0/engine/staged_memory.py`，不调用原版构造器/from_config/public add，只注入已核验字段后执行固定归档调用点；逐项对账动作/暂存/history/结果，对NONE使用其特例证据，核心走原文事务。（依赖 T027、T028）
+- [X] T030 [US3] **机制硬门禁**：运行T025/T026实际固定SDK测试和锁定依赖安全检查，在 `specs/007-memory-backends/acceptance.md` 记录SDK摘要、零真实写入/零默认网络、NONE成功与fatal负例；失败不得进入US3b，不升级到ADD-only、不换假Store。（依赖 T029）
 
 ### US3b: 服务端事务、协议与安全
 
-- [ ] T031 [US3] 新建 `integrations/mem0-adapter/tests/unit/test_settings_security.py`，按协议§7.1覆盖JSON数组形状、未知字段、64hex摘要/非nil UUID、重复key拒绝、多key同workspace允许、origin规范化后重复/CSV/路径拒绝、token及cursor密钥格式；并验证必填/维度/TLS、import禁遥测、MEM0_DIR和错误不回显Secret。（依赖 T030）
-- [ ] T032 [US3] 实现 `integrations/mem0-adapter/src/oryx_mem0/settings.py`、`integrations/mem0-adapter/src/oryx_mem0/bootstrap.py` 的严格配置及导入安全，并先在 `integrations/mem0-adapter/src/oryx_mem0/contracts.py` 实现共享请求hash、receipt DTO、序列化/预算基础函数供后续存储使用；路由适配留T045。坏项整体拒绝，不跳过/覆盖配置。（依赖 T031）
-- [ ] T033 [US3] 建立 `integrations/mem0-adapter/tests/integration/conftest.py` 的显式隔离PG/pgvector fixture、合成数据和故障注入点；仅连接明确提供的测试库，禁止生产库/默认外部模型，不因缺环境把integration记为通过。（依赖 T030）
-- [ ] T034 [P] [US3] 新建 `integrations/mem0-adapter/tests/integration/test_transactions.py`，验证五表/原文/幂等/RECEIVED期限/owner/CAS、历史和审计失败回滚、提交未知/崩溃；增加生成条目/完整序列化receipt超限必须在COMMITTED前回滚，以及FAILED/ABORTED匹配凭据和memory_effects_applied=false。（依赖 T033）
-- [ ] T035 [P] [US3] 新建 `integrations/mem0-adapter/tests/integration/test_queries.py`，覆盖同一snapshot读CORE/ARCHIVAL、核心超过100条、字节分页、100条窗口、最多20条召回；用引号/反斜杠/Unicode验证整个JSON预算、最长完整前缀及truncated_by_bytes、不截正文/不伪装空结果，并保留历史/并发/身份隔离用例。（依赖 T033）
-- [ ] T036 [US3] 编写 `integrations/mem0-adapter/migrations/001_initial.sql` 与 `integrations/mem0-adapter/src/oryx_mem0/storage/migrations.py`，显式建立oryx_memory五表、关联/索引/最小权限；验证schema版本/维度，历史禁止UPDATE/DELETE，未知结构拒绝，不自动修改业务库。（依赖 T034、T032）
-- [ ] T037 [US3] 实现 `integrations/mem0-adapter/src/oryx_mem0/storage/operations.py`，登记原文/hash/不可延长deadline并持久化RECEIVED；仅未过期记录取得唯一owner，重复请求读同状态、不同hash冲突，提供查询和确定终态更新。（依赖 T036）
-- [ ] T038 [US3] 实现 `integrations/mem0-adapter/src/oryx_mem0/storage/memories.py`，主库REPEATABLE READ快照；最终短事务校验owner/期限/baseline、生成完整receipt并以发送序列化规则验证1MiB及生成条目预算后，再原子提交versions/current/revision/receipt；历史或预算失败全回滚。（依赖 T037）
-- [ ] T039 [US3] 实现 `integrations/mem0-adapter/src/oryx_mem0/storage/call_audits.py`，为受控wrapper提供持久STARTED/COMPLETED/FAILED/UNKNOWN、usage与workspace/operation关联；失败不回传任意正文、未提供token为空，审计失败禁止SAVE提交。（依赖 T036、T028）
-- [ ] T040 [US3] 实现 `integrations/mem0-adapter/src/oryx_mem0/services/operations.py`，组合CORE原文追加、ARCHIVAL暂存推理和RECALL只读路径；合法NOOP保留原文/receipt而不刷新条目内容或recency；fatal、冲突和未知COMMIT都不能报告完整成功或重推理。（依赖 T029、T038、T039）
-- [ ] T041 [US3] 实现 `integrations/mem0-adapter/src/oryx_mem0/storage/recovery.py`，在启动/状态读取时用行锁处理过期RECEIVED/RUNNING→ABORTED和未完成调用→UNKNOWN；不延长期限、不重新运行SDK、不覆盖可能已COMMITTED的结果，晚到owner无法提交。（依赖 T037、T038）
-- [ ] T042 [US3] 实现 `integrations/mem0-adapter/src/oryx_mem0/storage/queries.py`，按versions重构当前快照有效条目；核心全量/归档100条，RECALL仅当前ARCHIVAL按score DESC/id ASC取top20，再按实际receipt字节取完整前缀、记录计数/字节缩减标记；拒绝非法向量和不可容纳单项，不做ANN或历史检索。（依赖 T035、T038、T039）
-- [ ] T043 [US3] **事务硬门禁**：执行真实PG的T034/T035及恢复故障测试，在 `specs/007-memory-backends/acceptance.md` 记录current/history/receipt同生共死、原文保留、revision冲突与重启证据；禁止以SQLite或纯内存假库替代。（依赖 T040、T041、T042）
-- [ ] T044 [US3] 新建 `integrations/mem0-adapter/tests/integration/test_api.py`，覆盖五端点、认证/字段/大小和全部receipt状态；验证snapshot跨scope复用而cursor跨scope/snapshot/type/排序拒绝；注入提交后畸形200/错误hash/缺history标记/5xx及lookup失败，固定SAVE未知优先规则；无历史/重置/配置入口。（依赖 T043）
-- [ ] T045 [US3] 实现 `integrations/mem0-adapter/src/oryx_mem0/contracts.py`、`integrations/mem0-adapter/src/oryx_mem0/security.py` 及 `integrations/mem0-adapter/tests/fixtures/protocol-v1.json`：严格判别体/终态凭据、NUL-hash向量、§7.1绑定/origin格式、分类型HMAC令牌、实际JSON字节预算及固定错误模板，不回显Secret。（依赖 T044）
-- [ ] T046 [US3] 实现 `integrations/mem0-adapter/src/oryx_mem0/services/snapshots.py`：snapshot只绑定workspace/revision/nonce/期限且跨scope复用；cursor另绑具体snapshot摘要/scope/排序/最后键。每页≤100条且完整序列化≤1MiB，计数/complete正确，禁止令牌混用、越scope游标、旧revision请求或不前进页。（依赖 T042、T045）
-- [ ] T047 [US3] 实现 `integrations/mem0-adapter/src/oryx_mem0/app.py`，仅注册协议五路由，全部认证，组合配置/schema检查、操作/恢复/快照服务；caps只报告实际构建/协议兼容性，不代替安全证据。（依赖 T040、T041、T045、T046）
-- [ ] T048 [US3] 编写 `integrations/mem0-adapter/Dockerfile`、`integrations/mem0-adapter/compose.yaml` 与 `integrations/mem0-adapter/build-manifest.json`，固定源码/完整锁图/镜像digest，显式可选profile、受控TLS/Secret/持久卷/内网origin和受限角色；不使用原版server默认部署，不默认启动或绑定公网。（依赖 T047、T024）
-- [ ] T049 [US3] 运行真实适配HTTP/PG集成及构建依赖/镜像检查，记录 `specs/007-memory-backends/acceptance.md` 的协议版本、schema与拒绝证据；未满足R1/R3只可留在隔离测试，不能启用真实业务环境。（依赖 T048）
+- [X] T031 [US3] 新建 `integrations/mem0-adapter/tests/unit/test_settings_security.py`，按协议§7.1覆盖JSON数组形状、未知字段、64hex摘要/非nil UUID、重复key拒绝、多key同workspace允许、origin规范化后重复/CSV/路径拒绝、token及cursor密钥格式；并验证必填/维度/TLS、import禁遥测、MEM0_DIR和错误不回显Secret。配套 `tests/unit/test_contracts.py` 验证T032共享hash/DTO/序列化基础。（依赖 T030）
+- [X] T032 [US3] 实现 `integrations/mem0-adapter/src/oryx_mem0/settings.py`、`integrations/mem0-adapter/src/oryx_mem0/bootstrap.py` 的严格配置及导入安全，并先在 `integrations/mem0-adapter/src/oryx_mem0/contracts.py` 实现共享请求hash、receipt DTO、序列化/预算基础函数供后续存储使用；路由适配留T045。坏项整体拒绝，不跳过/覆盖配置。（依赖 T031）
+- [X] T033 [US3] 建立 `integrations/mem0-adapter/tests/integration/conftest.py` 的显式隔离PG/pgvector fixture、合成数据和故障注入点；仅连接明确提供的测试库，禁止生产库/默认外部模型，不因缺环境把integration记为通过。（依赖 T030）
+- [X] T034 [P] [US3] 新建 `integrations/mem0-adapter/tests/integration/test_transactions.py`，验证五表/原文/幂等/RECEIVED期限/owner/CAS、历史和审计失败回滚、提交未知/崩溃；增加生成条目/完整序列化receipt超限必须在COMMITTED前回滚，以及FAILED/ABORTED匹配凭据和memory_effects_applied=false。（依赖 T033；当前30项全部通过）
+- [X] T035 [P] [US3] 新建 `integrations/mem0-adapter/tests/integration/test_queries.py`，覆盖同一snapshot读CORE/ARCHIVAL、核心超过100条、字节分页、100条窗口、最多20条召回；用引号/反斜杠/Unicode验证整个JSON预算、最长完整前缀及truncated_by_bytes、不截正文/不伪装空结果，并保留历史/并发/身份隔离用例。（依赖 T033；7项全部通过）
+- [X] T036 [US3] 编写 `integrations/mem0-adapter/migrations/001_initial.sql` 与 `integrations/mem0-adapter/src/oryx_mem0/storage/migrations.py`，显式建立oryx_memory五表、关联/索引/最小权限；验证schema版本/维度，历史禁止UPDATE/DELETE，未知结构拒绝，不自动修改业务库。（依赖 T034、T032）
+- [X] T037 [US3] 实现 `integrations/mem0-adapter/src/oryx_mem0/storage/operations.py`，登记原文/hash/不可延长deadline并持久化RECEIVED；仅未过期记录取得唯一owner，重复请求读同状态、不同hash冲突，提供查询和确定终态更新。（依赖 T036；终态写入由T038/T041完成，本任务已提供严格查询解析）
+- [X] T038 [US3] 实现 `integrations/mem0-adapter/src/oryx_mem0/storage/memories.py`，主库REPEATABLE READ快照；最终短事务校验owner/期限/baseline、生成完整receipt并以发送序列化规则验证1MiB及生成条目预算后，再原子提交versions/current/revision/receipt；历史或预算失败全回滚。（依赖 T037）
+- [X] T039 [US3] 实现 `integrations/mem0-adapter/src/oryx_mem0/storage/call_audits.py`，为受控wrapper提供持久STARTED/COMPLETED/FAILED/UNKNOWN、usage与workspace/operation关联；失败不回传任意正文、未提供token为空，审计失败禁止SAVE提交。（依赖 T036、T028；UNKNOWN恢复写入归T041）
+- [X] T040 [US3] 实现 `integrations/mem0-adapter/src/oryx_mem0/services/operations.py`，组合CORE原文追加、ARCHIVAL暂存推理和RECALL只读路径；合法NOOP保留原文/receipt而不刷新条目内容或recency；fatal、冲突和未知COMMIT都不能报告完整成功或重推理。（依赖 T029、T038、T039；T042提供实际查询处理器）
+- [X] T041 [US3] 实现 `integrations/mem0-adapter/src/oryx_mem0/storage/recovery.py`，在启动/状态读取时用行锁处理过期RECEIVED/RUNNING→ABORTED和未完成调用→UNKNOWN；不延长期限、不重新运行SDK、不覆盖可能已COMMITTED的结果，晚到owner无法提交。（依赖 T037、T038）
+- [X] T042 [US3] 实现 `integrations/mem0-adapter/src/oryx_mem0/storage/queries.py`，按versions重构当前快照有效条目；核心全量/归档100条，RECALL仅当前ARCHIVAL按score DESC/id ASC取top20，再按实际receipt字节取完整前缀、记录计数/字节缩减标记；拒绝非法向量和不可容纳单项，不做ANN或历史检索。（依赖 T035、T038、T039）
+- [X] T043 [US3] **事务硬门禁**：执行真实PG的T034/T035及恢复故障测试，在 `specs/007-memory-backends/acceptance.md` 记录current/history/receipt同生共死、原文保留、revision冲突与重启证据；禁止以SQLite或纯内存假库替代。（依赖 T040、T041、T042）
+- [X] T044 [US3] 新建 `integrations/mem0-adapter/tests/integration/test_api.py`，覆盖五端点、认证/字段/大小和全部receipt状态；验证snapshot跨scope复用而cursor跨scope/snapshot/type/排序拒绝；注入提交后畸形200/错误hash/缺history标记/5xx及lookup失败，固定SAVE未知优先规则；无历史/重置/配置入口。（依赖 T043；25项全部通过）
+- [X] T045 [US3] 实现 `integrations/mem0-adapter/src/oryx_mem0/contracts.py`、`integrations/mem0-adapter/src/oryx_mem0/security.py` 及 `integrations/mem0-adapter/tests/fixtures/protocol-v1.json`：严格判别体/终态凭据、字段间NUL-hash向量、远端正文NUL拒绝、§7.1绑定/origin格式、分类型HMAC令牌、实际JSON字节预算及固定错误模板，不回显Secret。（依赖 T044；用户点名批准顺序例外；后续T044/T047已补齐验证）
+- [X] T046 [US3] 实现 `integrations/mem0-adapter/src/oryx_mem0/services/snapshots.py`：snapshot只绑定workspace/revision/nonce/期限且跨scope复用；cursor另绑具体snapshot摘要/scope/排序/最后键。每页≤100条且完整序列化≤1MiB，计数/complete正确，禁止令牌混用、越scope游标、旧revision请求或不前进页。（依赖 T042、T045）
+- [X] T047 [US3] 实现 `integrations/mem0-adapter/src/oryx_mem0/app.py`，仅注册协议五路由，全部认证，组合配置/schema检查、操作/恢复/快照服务；caps只报告实际构建/协议兼容性，不代替安全证据。（依赖 T040、T041、T045、T046）
+- [X] T048 [US3] 编写 `integrations/mem0-adapter/Dockerfile`、`integrations/mem0-adapter/compose.yaml` 与 `integrations/mem0-adapter/build-manifest.json`，固定源码/完整锁图/镜像digest，显式可选profile、受控TLS/Secret/持久卷/内网origin和受限角色；不使用原版server默认部署，不默认启动或绑定公网。（依赖 T047、T024）
+- [X] T049 [US3]（第二轮镜像安全门禁通过，见 acceptance 2026-09-03） 运行真实适配HTTP/PG集成及构建依赖/镜像检查，记录 `specs/007-memory-backends/acceptance.md` 的协议版本、schema与拒绝证据；未满足R1/R3只可留在隔离测试，不能启用真实业务环境。（依赖 T048）
 
 ### US3c: Java 适配与工具链
 
-- [ ] T050 [US3] 在 `oryxos-memory/pom.xml` 显式加入现有BOM管理的spring-web及已锁定MockWebServer测试依赖，并新建 `oryxos-memory/src/test/java/com/oryxos/memory/HttpsFixture.java` 提供临时测试CA/证书（使用JDK工具和已有依赖），不加入生产trust-all开关或未批准库。（依赖 T030）
-- [ ] T051 [P] [US3] 新建 `oryxos-memory/src/test/java/com/oryxos/memory/Mem0MemoryStoreContractTest.java`，真实Store+HTTPS替身覆盖共同契约/hash、同snapshot双scope/错误cursor、JSON转义字节预算和完整前缀；SAVE派发后畸形/超限200、hash/身份不符、缺receipt/history、5xx及GET拒绝均须查原ID或报UNKNOWN，不重PUT；保留caps/慢响应/无降级。（依赖 T050、T045）
-- [ ] T052 [P] [US3] 新建 `oryxos-tool/src/test/java/com/oryxos/tool/sandbox/HttpWhitelistSandboxTest.java` 并扩展 `oryxos-tool/src/test/java/com/oryxos/tool/ToolConfigurationTest.java`，验证host精确匹配/IDN、空名单和非法URI、非HTTP动作拒绝以及用户已有Sandbox优先。（依赖 T050）
-- [ ] T053 [P] [US3] 新建 `oryxos-memory/src/test/java/com/oryxos/memory/MemoryOperationExceptionTest.java`，扩展 `oryxos-tool/src/test/java/com/oryxos/tool/AnnotatedToolAdapterTest.java` 和 `oryxos-core/src/test/java/com/oryxos/core/react/ToolExecutorTest.java`，锁住错误分类/UUID/不重试、未知结果与中断明细、非Memory异常仍脱敏。（依赖 T050）
-- [ ] T054 [US3] 新建 `oryxos-memory/src/main/java/com/oryxos/memory/MemoryOutboundGuard.java` 与 `oryxos-memory/src/main/java/com/oryxos/memory/MemoryOperationException.java`，只开放契约中的检查及固定分类/UUID，不接收远端任意message；OUTCOME_UNKNOWN必须带编号。（依赖 T051、T053）
-- [ ] T055 [US3] 实现 `oryxos-tool/src/main/java/com/oryxos/tool/sandbox/HttpWhitelistSandbox.java` 并修改 `oryxos-tool/src/main/java/com/oryxos/tool/ToolConfiguration.java` 默认接线，复用http.allowed_domains，只提前HTTP能力，其余动作拒绝且不覆盖自定义Sandbox。（依赖 T052）
-- [ ] T056 [US3] 新建 `oryxos-memory/src/main/java/com/oryxos/memory/Mem0Properties.java` 并修改 `oryxos-memory/src/main/java/com/oryxos/memory/MemoryConfiguration.java` 条件绑定，校验HTTPS origin、规范非nil UUID、43字符规范token和3s/30s/40s预算；默认本地绝不解析Mem0变量。（依赖 T054、T006）
-- [ ] T057 [US3] 实现包内 `oryxos-memory/src/main/java/com/oryxos/memory/Mem0HttpTransport.java` 和 `oryxos-memory/src/main/java/com/oryxos/memory/Mem0Protocol.java`：最终URI先guard，禁重定向/代理继承，限时关闭资源，校验实际字节/各状态身份hash/失败无业务效果字段。向Store保留派发阶段及诊断，不能用传输层错误覆盖已派发SAVE的未知结果。（依赖 T054、T056、T050）
-- [ ] T058 [US3] 实现 `oryxos-memory/src/main/java/com/oryxos/memory/Mem0MemoryStore.java`，固定oryx-memory-v1；SAVE在发送前设置DISPATCHED，此后只用匹配终态确认，否则剩余期限内查原ID、最终UNKNOWN且不重PUT；独立RECALL/load按只读失败处理。校验同snapshot双scope完整页及召回预算标记，不返回部分核心/伪记忆，不缓存或降级。（依赖 T057、T051）
-- [ ] T059 [US3] 修改 `oryxos-tool/src/main/java/com/oryxos/tool/AnnotatedToolAdapter.java` 精确映射受限异常，并修改 `oryxos-core/src/main/java/com/oryxos/core/react/ToolExecutor.java` 保留校验后的非重试失败与中断标志；不改ToolResult/审计接口或透传任意异常。（依赖 T053、T054）
-- [ ] T060 [US3] 新建 `oryxos-boot/src/main/java/com/oryxos/boot/MemoryOutboundConfiguration.java` 组合Guard→Sandbox，完成 `oryxos-memory/src/main/java/com/oryxos/memory/MemoryConfiguration.java` 与 `oryxos-memory/src/main/java/com/oryxos/memory/MemoryTools.java` 接线/包内确认文案；在 `oryxos-boot/src/main/resources/application.yaml` 给出不会影响本地默认的配置入口，缺guard/caps不兼容必须失败。（依赖 T055、T058、T059）
-- [ ] T061 [US3] 执行Java单元/真实适配器契约及最小获准自托管冒烟，在 `integrations/mem0-adapter/tests/integration/test_runtime_smoke.py` 覆盖真实内网模型保存→原子历史→新会话/重启→回忆，记录 `specs/007-memory-backends/acceptance.md`；环境缺失时该项保持未完成，不能用传输替身填绿。（依赖 T049、T060）
-- [ ] T062 [US3] 完成US3故事级一致性审查及稳定提交，在 `specs/007-memory-backends/acceptance.md` 明确源码/SDK/锁图/部署版本、已通过证据与剩余全矩阵验收；保留原版缺口说明，不用caps声明或Java绿灯替代Python/真实服务证据。（依赖 T061）
+- [X] T050 [US3] 在 `oryxos-memory/pom.xml` 显式加入现有BOM管理的spring-web及已锁定MockWebServer测试依赖，并新建 `oryxos-memory/src/test/java/com/oryxos/memory/HttpsFixture.java` 提供临时测试CA/证书（使用JDK工具和已有依赖），不加入生产trust-all开关或未批准库。（依赖 T030）
+- [X] T051 [P] [US3] 新建 `oryxos-memory/src/test/java/com/oryxos/memory/Mem0MemoryStoreContractTest.java`，真实Store+HTTPS替身覆盖共同契约/hash、同snapshot双scope/错误cursor、JSON转义字节预算和完整前缀；SAVE派发后畸形/超限200、hash/身份不符、缺receipt/history、5xx及GET拒绝均须查原ID或报UNKNOWN，不重PUT；保留caps/慢响应/无降级。（依赖 T050、T045；67项先行，66行为红灯/1通过；T057/T058及过期补例后68/68通过）
+- [X] T052 [P] [US3] 新建 `oryxos-tool/src/test/java/com/oryxos/tool/sandbox/HttpWhitelistSandboxTest.java` 并扩展 `oryxos-tool/src/test/java/com/oryxos/tool/ToolConfigurationTest.java`，验证host精确匹配/IDN、空名单和非法URI、非HTTP动作拒绝以及用户已有Sandbox优先。（依赖 T050）
+- [X] T053 [P] [US3] 新建 `oryxos-memory/src/test/java/com/oryxos/memory/MemoryOperationExceptionTest.java`，扩展 `oryxos-tool/src/test/java/com/oryxos/tool/AnnotatedToolAdapterTest.java` 和 `oryxos-core/src/test/java/com/oryxos/core/react/ToolExecutorTest.java`，锁住错误分类/UUID/不重试、未知结果与中断明细、非Memory异常仍脱敏。（依赖 T050）
+- [X] T054 [US3] 新建 `oryxos-memory/src/main/java/com/oryxos/memory/MemoryOutboundGuard.java` 与 `oryxos-memory/src/main/java/com/oryxos/memory/MemoryOperationException.java`，只开放契约中的检查及固定分类/UUID，不接收远端任意message；OUTCOME_UNKNOWN必须带编号。（依赖 T051、T053；用户批准跳过T051顺序实现，T051本身仍未完成）
+- [X] T055 [US3] 实现 `oryxos-tool/src/main/java/com/oryxos/tool/sandbox/HttpWhitelistSandbox.java` 并修改 `oryxos-tool/src/main/java/com/oryxos/tool/ToolConfiguration.java` 默认接线，复用http.allowed_domains，只提前HTTP能力，其余动作拒绝且不覆盖自定义Sandbox。（依赖 T052）
+- [X] T056 [US3] 新建 `oryxos-memory/src/main/java/com/oryxos/memory/Mem0Properties.java` 并修改 `oryxos-memory/src/main/java/com/oryxos/memory/MemoryConfiguration.java` 条件绑定，校验HTTPS origin、规范非nil UUID、43字符规范token和3s/30s/40s预算；默认本地绝不解析Mem0变量。（依赖 T054、T006）
+- [X] T057 [US3] 实现包内 `oryxos-memory/src/main/java/com/oryxos/memory/Mem0HttpTransport.java` 和 `oryxos-memory/src/main/java/com/oryxos/memory/Mem0Protocol.java`：最终URI先guard，禁重定向/代理继承，限时关闭资源，校验实际字节/各状态身份hash/失败无业务效果字段。向Store保留派发阶段及诊断，不能用传输层错误覆盖已派发SAVE的未知结果。（依赖 T054、T056、T050）
+- [X] T058 [US3] 实现 `oryxos-memory/src/main/java/com/oryxos/memory/Mem0MemoryStore.java`，固定oryx-memory-v1；SAVE在发送前设置DISPATCHED，此后只用匹配终态确认，否则剩余期限内查原ID、最终UNKNOWN且不重PUT；独立RECALL/load按只读失败处理。校验同snapshot双scope完整页及召回预算标记，不返回部分核心/伪记忆，不缓存或降级。（依赖 T057、T051）
+- [X] T059 [US3] 修改 `oryxos-tool/src/main/java/com/oryxos/tool/AnnotatedToolAdapter.java` 精确映射受限异常，并修改 `oryxos-core/src/main/java/com/oryxos/core/react/ToolExecutor.java` 保留校验后的非重试失败与中断标志；不改ToolResult/审计接口或透传任意异常。（依赖 T053、T054）
+- [X] T060 [US3] 新建 `oryxos-boot/src/main/java/com/oryxos/boot/MemoryOutboundConfiguration.java` 组合Guard→Sandbox，完成 `oryxos-memory/src/main/java/com/oryxos/memory/MemoryConfiguration.java` 与 `oryxos-memory/src/main/java/com/oryxos/memory/MemoryTools.java` 接线/包内确认文案；在 `oryxos-boot/src/main/resources/application.yaml` 给出不会影响本地默认的配置入口，缺guard/caps不兼容必须失败。（依赖 T055、T058、T059）
+- [X] T061 [US3]（真实本地模型最小冒烟通过，见 acceptance 2026-09-03） 执行Java单元/真实适配器契约及最小获准自托管冒烟，在 `integrations/mem0-adapter/tests/integration/test_runtime_smoke.py` 覆盖真实内网模型保存→原子历史→新会话/重启→回忆，记录 `specs/007-memory-backends/acceptance.md`；环境缺失时该项保持未完成，不能用传输替身填绿。（依赖 T049、T060）
+- [X] T062 [US3] 完成US3故事级一致性审查及稳定提交，在 `specs/007-memory-backends/acceptance.md` 明确源码/SDK/锁图/部署版本、已通过证据与剩余全矩阵验收；保留原版缺口说明，不用caps声明或Java绿灯替代Python/真实服务证据。（依赖 T061）
 
 ## Phase 6: US4 — 切换、追溯与整体验收（P1）
 
@@ -151,7 +153,7 @@
 
 - [ ] T071 更新 `.github/workflows/ci.yml`，保持Java门禁并加入外部组件frozen-lock单测/隔离PG集成/依赖安全验证；清楚区分快门禁和封板全量门禁，无NVD key时的跳过路径不能算完整verify。真实模型测试仅用显式获准环境，CI不默认访问云端或注入业务Secret。（依赖 T070）
 - [ ] T072 回核 `integrations/mem0-adapter/build-manifest.json`、`integrations/mem0-adapter/uv.lock` 与 `integrations/mem0-adapter/Dockerfile` 的源码/依赖/镜像摘要，执行获准的本地或内网镜像扫描、记录工具版本/规则库时间/结果到 `specs/007-memory-backends/acceptance.md`；不上传私有镜像，缺工具或未处置问题则R1不通过。（依赖 T071）
-- [ ] T073 按用户要求由Spark只执行最终回归命令：`mvn clean verify`（不跳插件）、显式Java integration、Python unit/integration/pip-audit及quickstart验收；将精确命令、模型执行说明、源码/镜像版本和结果写入 `specs/007-memory-backends/acceptance.md`，长输出保留 `.verification/007-memory-backends/final-verify.log`；Spark不得修改业务/测试文件，无法使用时报告并等待安排。（依赖 T072）
+- [ ] T073 按用户最新要求由主模型执行最终回归：`mvn clean verify`（不跳插件）、显式Java integration、Python unit/integration、来源绑定的完整依赖审计及quickstart验收；将命令、源码/镜像版本和实际结果写入 `acceptance.md`，保留原始扫描和长日志，不以补丁验证替代真实运行门禁。（依赖T072）
 - [ ] T074 由主模型完成最终实现一致性审查，逐项核对 `specs/007-memory-backends/spec.md`、`specs/007-memory-backends/plan.md`、`specs/007-memory-backends/tasks.md` 与实际代码/证据；发现缺口追加可追踪补救任务，不删旧断言或直接改勾选，修复后重跑受影响门禁。（依赖 T073）
 - [ ] T075 仅在R1–R5全通过后收口 `specs/007-memory-backends/acceptance.md`、`specs/007-memory-backends/spec.md` 和 `docs/decisions/007-memory-backends-scope.md` 状态，记录各故事提交与剩余人工项，完成本地归档提交；只提交本feature明确变更，不自动push，未验收项存在则不得标007完成。（依赖 T074）
 
@@ -236,8 +238,29 @@ US4是跨后端验收，优先级P1不改变其依赖US3的事实；其共同断
 1. **最小可交付增量**：T001–T013，仅US1默认Markdown兼容；这不是007全功能完成。
 2. **本地增量**：US2真实SQLite验证后建立稳定提交，保留默认用户体验。
 3. **高风险先验证机制**：US3a只做受控暂存与必需包装；T030未通过不展开服务。PG阶段再用T043阻断不可靠的历史/状态实现。
-4. **接线与全面验证分开**：先证明真实适配器/安全/最小冒烟，再做US4全部切换和真实黄金集；最后冻结候选源码/镜像并由Spark执行回归。
+4. **接线与全面验证分开**：先证明真实适配器/安全/最小冒烟，再做US4全部切换和真实黄金集；最后冻结候选源码/镜像并由主模型执行回归。
+
+## 已批准补救任务（T076–T079）
+
+来源：用户批准回移官方安全补丁并核验后继续，见[安全回移契约](contracts/sdk-security-backport.md)。以下属于US3与R1，执行位置为T024之后、T025之前；不重编号原任务，不把原始扫描发现删除或伪装成未发生。
+
+- [X] T076 [US3] 同步四份事实源、AGENTS、plan/contracts与当前回归模型决议；在 `integrations/mem0-adapter/vendor/sdk-lock.json`、`vendor/upstream-sdk-files.json` 固定来源、官方补丁及SDK代码集合，保留许可证。（依赖T024）
+- [X] T077 [US3] 先写 `tests/unit/test_sdk_build.py`、`tests/unit/test_sdk_security.py` 红灯，再实现 `scripts/sdk_build.py` 与 `patches/CVE-2026-7597.patch`，产出 `vendor/mem0ai-1.0.11+oryx.1-py3-none-any.whl`；验证只有FAISS源码变化、危险pickle拒绝、合法旧格式/JSON、篡改失败及可重复构建。（依赖T076）
+- [X] T078 [US3] 更新 `pyproject.toml`、`uv.lock` 和指纹/来源测试；实现并测试 `scripts/audit_dependencies.py` 的来源绑定处置：完整依赖清单、原始报告保留、只标记已证实修复的目标CVE，其他/未知/缺失/扫描失败仍阻断。（依赖T077）
+- [X] T079 [US3] 主模型执行补丁测试、重复构建、frozen同步、完整依赖扫描与源验证，记录 `acceptance.md`；只读一致性复审通过后解除此CVE的实施阻断，继续T025，不能将T030或R1–R5整体标完成。（依赖T078）
 5. **运行失败不能变文档成功**：没有真实环境、依赖安全不通过、快照不完整、历史或审计不可靠均保持对应任务未完成；只能记录阻碍并请求所需输入，不删需求或悄悄换方案。
+
+## T049真实部署发现的补救（2026-09-03）
+
+- [X] T080 [US3] 修复真实容器检查发现的接线缺口：新PG库显式启用固定vector扩展；允许审计usage中合法NULL字段；登记结果携带真实replayed标记；实际服务异常优先读取匹配持久终态，冲突/失败/未知结果用固定类型和状态映射；状态读取触发已批准恢复，并补齐请求读取与分页信封预算。真实HTTPS/SDK/PG回归、旧单测/集成及源码绑定镜像重建通过后才完成，不以此替代镜像漏洞与真实模型门禁。（依赖T049检查发现；不重编号原79项）
+
+## T062一致性审查发现的补救（2026-09-03）
+
+- [X] T081 [US3] capabilities 补齐契约要求的构建版本与固定限制：`runtime.py` 从镜像内 source-manifest 实际字节计算 build_version，`app.py` 校验形态而非整体相等；Java `Mem0Protocol` 同步要求 64-hex build_version 与六项固定 limits，双侧 fixture 与测试同步，不得放松未知字段拒绝。（依赖T062审查发现）
+- [X] T082 [US3] RECALL 读取改为只读 REPEATABLE READ 单快照（revision 与 items 一致），`complete_recall` 将 revision 校验从等于 baseline 改为单调不后退（与 Java 侧 minimum/max 语义一致），补并发 SAVE 期间 RECALL 不伪失败及钳位 score 用例。（依赖T062审查发现）
+- [X] T083 [US3] `runtime.py` 的 `PgReadonlySnapshot` 分别返回真实 created_at/updated_at，不再以 updated_at 同时填充；核验推理读快照 revision 与 RunContext baseline 的绑定由提交 CAS 兜底并补测试。（依赖T062审查发现）
+- [X] T084 [US3] 补提交阶段真实连接丢失测试：pg_terminate_backend 终止 RUNNING/提交连接后，操作不得出现假 COMMITTED 或假 FAILED，恢复路径产生 ABORTED/可查询终态，重 PUT 幂等返回。（依赖T062审查发现）
+- [X] T085 [US3] 收窄 `tests/conftest.py` 的 `inprocess_asgi`：fixture 期间仅放行 loopback 连接，非回环目标仍拒绝；验证 API 测试不依赖非回环连接，不删除网络拒绝断言。（依赖T062审查发现）
 
 ## Generation Check & Next Step
 

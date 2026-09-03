@@ -92,4 +92,22 @@ class MemoryToolsTest {
 
     assertThat(new MemoryTools(service).recallMemory("不存在")).isEqualTo("没有找到相关记忆");
   }
+
+  @Test
+  void mem0ReplyDoesNotPromiseThatNoopCreatedNewFacts() {
+    MemoryService service = mock(MemoryService.class);
+    assertThat(new MemoryTools(service, true).saveMemory("重复事实", null)).isEqualTo("记忆处理完成");
+    verify(service).remember("重复事实", MemoryScope.ARCHIVAL);
+  }
+
+  @Test
+  void processedReplyCannotTurnUnknownOutcomeIntoSuccess() {
+    MemoryService service = mock(MemoryService.class);
+    MemoryOperationException error =
+        new MemoryOperationException(
+            MemoryOperationException.Code.MEMORY_OUTCOME_UNKNOWN, java.util.UUID.randomUUID());
+    org.mockito.Mockito.doThrow(error).when(service).remember("不确定", MemoryScope.ARCHIVAL);
+    assertThatThrownBy(() -> new MemoryTools(service, true).saveMemory("不确定", null))
+        .isSameAs(error);
+  }
 }

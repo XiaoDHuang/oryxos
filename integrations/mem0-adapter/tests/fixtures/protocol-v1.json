@@ -1,0 +1,126 @@
+{
+  "request_hash_vectors": [
+    {
+      "workspace_id": "11111111-1111-4111-8111-111111111111",
+      "kind": "SAVE",
+      "scope": "CORE",
+      "text": "  原文é\n\"\\😀  ",
+      "sha256": "990909d3e879324f6edf9395b31d6cb78620666e6cd45940159daddaf5454b9d"
+    }
+  ],
+  "snapshot": {
+    "workspace_id": "11111111-1111-4111-8111-111111111111",
+    "revision": 7,
+    "nonce": "88888888-8888-4888-8888-888888888888",
+    "issued_at": 1788220800,
+    "expires_at": 1788221100,
+    "token": "eyJleHBpcmVzX2F0IjoxNzg4MjIxMTAwLCJpc3N1ZWRfYXQiOjE3ODgyMjA4MDAsIm5vbmNlIjoiODg4ODg4ODgtODg4OC00ODg4LTg4ODgtODg4ODg4ODg4ODg4IiwicmV2aXNpb24iOjcsInR5cGUiOiJzbmFwc2hvdCIsInYiOjEsIndvcmtzcGFjZV9pZCI6IjExMTExMTExLTExMTEtNDExMS04MTExLTExMTExMTExMTExMSJ9.C9zayTYoGM7AHKUajPwzxvXCFIrbrMYntf7FerA-iVA"
+  },
+  "cursors": [
+    {
+      "scope": "CORE",
+      "sort_id": "core_created_asc",
+      "after": [
+        3,
+        "33333333-3333-4333-8333-333333333333"
+      ],
+      "expires_at": 1788221100,
+      "token": "eyJhZnRlciI6WzMsIjMzMzMzMzMzLTMzMzMtNDMzMy04MzMzLTMzMzMzMzMzMzMzMyJdLCJleHBpcmVzX2F0IjoxNzg4MjIxMTAwLCJyZXZpc2lvbiI6Nywic2NvcGUiOiJDT1JFIiwic25hcHNob3RfZGlnZXN0IjoiMjhkYWM1MmYwZGZjYWQ1ZWU5NTZmY2U0NDRkNGFkYmRlZDcwZmRlYmI4NjYzODQ5MzY2NjY1YjM4YmFlN2FhYiIsInNvcnRfaWQiOiJjb3JlX2NyZWF0ZWRfYXNjIiwidHlwZSI6ImN1cnNvciIsInYiOjEsIndvcmtzcGFjZV9pZCI6IjExMTExMTExLTExMTEtNDExMS04MTExLTExMTExMTExMTExMSJ9.0xtcqCRB3ffUFv2TmmPf1MrljN40Q_Kv_HPjWv1ZXRk"
+    },
+    {
+      "scope": "ARCHIVAL",
+      "sort_id": "archival_updated_asc",
+      "after": [
+        6,
+        2,
+        "44444444-4444-4444-8444-444444444444"
+      ],
+      "expires_at": 1788221100,
+      "token": "eyJhZnRlciI6WzYsMiwiNDQ0NDQ0NDQtNDQ0NC00NDQ0LTg0NDQtNDQ0NDQ0NDQ0NDQ0Il0sImV4cGlyZXNfYXQiOjE3ODgyMjExMDAsInJldmlzaW9uIjo3LCJzY29wZSI6IkFSQ0hJVkFMIiwic25hcHNob3RfZGlnZXN0IjoiMjhkYWM1MmYwZGZjYWQ1ZWU5NTZmY2U0NDRkNGFkYmRlZDcwZmRlYmI4NjYzODQ5MzY2NjY1YjM4YmFlN2FhYiIsInNvcnRfaWQiOiJhcmNoaXZhbF91cGRhdGVkX2FzYyIsInR5cGUiOiJjdXJzb3IiLCJ2IjoxLCJ3b3Jrc3BhY2VfaWQiOiIxMTExMTExMS0xMTExLTQxMTEtODExMS0xMTExMTExMTExMTEifQ.3_Ynh2sAvWXN76YQyIGyBUgf_wkLsMJB2D9-kiJxbWg"
+    }
+  ],
+  "receipts": [
+    {
+      "workspace_id": "11111111-1111-4111-8111-111111111111",
+      "kind": "SAVE",
+      "scope": "ARCHIVAL",
+      "request_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "operation_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
+      "state": "RECEIVED",
+      "deadline_at": "2026-09-01T00:00:30Z"
+    },
+    {
+      "workspace_id": "11111111-1111-4111-8111-111111111111",
+      "kind": "SAVE",
+      "scope": "ARCHIVAL",
+      "request_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "operation_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2",
+      "state": "RUNNING",
+      "deadline_at": "2026-09-01T00:00:30Z"
+    },
+    {
+      "workspace_id": "11111111-1111-4111-8111-111111111111",
+      "kind": "SAVE",
+      "scope": "ARCHIVAL",
+      "request_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "operation_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa3",
+      "state": "FAILED",
+      "completed_at": "2026-09-01T00:00:20Z",
+      "error_code": "WRITE_CONFLICT",
+      "memory_effects_applied": false
+    },
+    {
+      "workspace_id": "11111111-1111-4111-8111-111111111111",
+      "kind": "SAVE",
+      "scope": "ARCHIVAL",
+      "request_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "operation_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa4",
+      "state": "ABORTED",
+      "completed_at": "2026-09-01T00:00:30Z",
+      "error_code": "OPERATION_DEADLINE",
+      "memory_effects_applied": false
+    },
+    {
+      "workspace_id": "11111111-1111-4111-8111-111111111111",
+      "kind": "SAVE",
+      "scope": "ARCHIVAL",
+      "request_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "operation_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa5",
+      "state": "COMMITTED",
+      "committed_at": "2026-09-01T00:00:10Z",
+      "revision": 8,
+      "outcome": "CHANGED",
+      "action_counts": {
+        "ADD": 1,
+        "UPDATE": 0,
+        "DELETE": 0
+      },
+      "affected_ids": [
+        "33333333-3333-4333-8333-333333333333"
+      ],
+      "history_complete": true
+    },
+    {
+      "workspace_id": "11111111-1111-4111-8111-111111111111",
+      "operation_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa6",
+      "kind": "RECALL",
+      "scope": "ARCHIVAL",
+      "request_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "state": "COMMITTED",
+      "committed_at": "2026-09-01T00:00:11Z",
+      "revision": 8,
+      "items": [
+        {
+          "memory_id": "33333333-3333-4333-8333-333333333333",
+          "content": "Java 21",
+          "scope": "ARCHIVAL",
+          "version_id": "44444444-4444-4444-8444-444444444444",
+          "score": 0.75
+        }
+      ],
+      "snapshot_revision": 8,
+      "truncated_by_bytes": false,
+      "returned_count": 1
+    }
+  ]
+}

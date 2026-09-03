@@ -2,6 +2,17 @@ server:
   port: ${SERVER_PORT:8080}
   shutdown: graceful
 
+# 仅选择mem0时解析远端Secret；启用前仍须通过007运行门禁。
+memory:
+  backend: ${MEMORY_BACKEND:markdown}
+  mem0:
+    base-url: ${MEM0_BASE_URL}
+    api-key: ${MEM0_API_KEY}
+    workspace-id: ${MEM0_WORKSPACE_ID}
+    connect-timeout: 3s
+    read-timeout: 30s
+    operation-timeout: 40s
+
 spring:
   application:
     name: oryxos

@@ -5,7 +5,7 @@
 跨工具目录与 Skills 说明见 [`.agents/README.md`](.agents/README.md)。
 ## 项目现状
 
-Maven 9 模块与 Provider、ReAct、CLI/Session、Notify、Tool 已有实现，006 文件式 Memory 已在 `3d60ee0` 归档。007 于 2026-08-31 进入实现：US1 默认 Markdown 兼容已在 `2a63e58` 提交，SQLite 后端已实现并通过本地验收；Mem0 尚未实现或通过运行准入。实际任务与证据见 `specs/007-memory-backends/tasks.md`、`acceptance.md`，不能把本地后端绿灯当作 007 完成。9 模块仍是默认基线；任何模块新增、删除、改名或职责迁移必须先写入 feature plan、获得用户显式批准，并同步本文件与 `docs/TechnicalSolution.md` 后才能实施。
+Maven 9 模块与 Provider、ReAct、CLI/Session、Notify、Tool 已有实现，006 文件式 Memory 已在 `3d60ee0` 归档。007 于 2026-08-31 进入实现：US1 默认 Markdown 兼容已在 `2a63e58` 提交，SQLite 后端已实现并通过本地验收；Mem0客户端与受控适配服务已进入分层验证，尚未通过运行准入。实际任务与证据见 `specs/007-memory-backends/tasks.md`、`acceptance.md`，不能把本地后端绿灯当作 007 完成。9 模块仍是默认基线；任何模块新增、删除、改名或职责迁移必须先写入 feature plan、获得用户显式批准，并同步本文件与 `docs/TechnicalSolution.md` 后才能实施。
 
 ## 一句话理解 OryxOS
 
@@ -129,6 +129,10 @@ Provider、Memory、Tool 三个能力供养 ReAct 循环这个引擎，引擎跑
 
 ## Memory 三后端实施边界（007）
 
+- 当前实施进度：T049镜像安全门禁passed、T061真实模型最小冒烟通过，实际66/80。镜像安全：适配器移除运行层pip、PG换官方trixie基础（17.11/0.8.6不变）并应用发行版修复+移除gosu全程999运行，493条发现全部逐项处置。真实模型环境为用户批准的Ollama本地方案：qwen2.5:7b-instruct+bge-m3（1024维），GPU推理全程本机回环，经TLS代理进隔离网；冒烟覆盖真实提炼/原子历史/审计/重启/语义召回。T066黄金集与R4/R5仍未通过，Mem0不可启用；PMD数据流诊断继续留待R5核验。
+
+- 2026-08-31用户批准对固定Mem0 1.0.11回移官方CVE-2026-7597补丁，保留原提炼算法；仅FAISS源码与诚实构建元数据可变化，受控版本为1.0.11+oryx.1。来源/产物摘要、真实反序列化回归及完整原始扫描必须保留；只对已证实修复的本构建目标告警作处置，未知告警仍失败，不使用全局忽略。细则见007的SDK安全回移契约。用户最新要求代码、测试及最终回归全部由主模型执行，不再调度Spark。
+
 - 保持 core 的 `List<Message> buildContext(Session, int)`、`remember(String, MemoryScope)`、`List<String> recall(String)` 签名；存储抽象/实现留在 memory，实体/仓储在 storage，仍为 9 模块。
 - `memory.backend` 在 `application.yaml` 启动时选 `markdown`（默认）/`sqlite`/`mem0`，重启生效。非法值失败、禁用后端零访问；切换不隐式迁移、删除、双写或静默降级。
 - scope 是 CORE/ARCHIVAL 分区，不改变当前工作区级共享边界；Mem0 的远端身份在 plan 明确映射，不擅自改为按 Profile/用户隔离。
@@ -139,7 +143,8 @@ Provider、Memory、Tool 三个能力供养 ReAct 循环这个引擎，引擎跑
 - 不新增 OryxOS 自动保存触发器。007 clarify 已获用户批准：Mem0 在显式保存归档时自动提炼、合并和替换，原始输入与被合并/替换旧归档持久保留且可追溯；常规召回/自动归档注入只读当前有效条目，不读历史副本。保存成功须同时满足有效状态可读和历史保全；核心与本地后端原文规则不变。历史落位、失败恢复及数据/审计路径仍须在 plan 核验；Mem0 内部 LLM 调用不能假称已进 OryxOS `llm_calls`。
 - 006 原规格保留为历史基线；007 共同测试须经过真实适配器，远端可替换传输不可替换成假 Store。范围记录见 `docs/decisions/007-memory-backends-scope.md`，未完成 plan 核验不得实现 Mem0。
 
-- 用户已批准新增 `integrations/mem0-adapter/` 受控 Python 组件（尚未实现），随 Mem0 部署、不新增 Maven 模块。固定 SDK 的提炼只操作请求级暂存；外部 PostgreSQL/pgvector 中 `memory_namespaces`、`memory_operations`、`memory_current`、`memory_versions`、`memory_call_audits` 承载原子提交与历史。不得用原版 REST 直连替代自有 `oryx-memory-v1` 协议。
+- 用户已批准并正在实现 `integrations/mem0-adapter/` 受控 Python 组件，随 Mem0 部署、不新增 Maven 模块；暂存、协议、隔离PG事务/查询及API分层验证已完成，真实部署/模型与全链路验收未完成。固定 SDK 的提炼只操作请求级暂存；外部 PostgreSQL/pgvector 中 `memory_namespaces`、`memory_operations`、`memory_current`、`memory_versions`、`memory_call_audits` 承载原子提交与历史。不得用原版 REST 直连替代自有 `oryx-memory-v1` 协议。
+- 用户于2026-09-01批准远端表示边界：Mem0的content/query及模型生成内容拒绝U+0000，避免PG TEXT无法保全原文；协议请求hash的字段间NUL分隔符保留，Markdown/SQLite输入能力不变。不得删除、替换或编码改写NUL后虚报保存成功。
 - Java 的 `MemoryOperationException` 只携带固定分类与操作 UUID，工具适配器映射为不可重试失败；不得把错误字符串返回成工具成功。最终审计 status 沿用 failed，并在错误字段区别 timeout/outcome_unknown，不擅改审计端口或表。
 - 007 plan 的设计门禁与运行验收分开：设计契约闭合后可按 tasks 实现并验证；部署启用前必须完成真实组件、完整数据路径、Python/镜像安全与审计证据检查。批准范围不等于实际验收通过，不能仅凭 capabilities 声明或假测试放行。
 

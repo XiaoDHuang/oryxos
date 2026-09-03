@@ -242,6 +242,42 @@ class ToolExecutorTest {
   }
 
   @Test
+  @DisplayName("工具返回已验证的不可重试失败后发生中断仍保留错误分类和编号")
+  void preservesValidatedFailureWhenToolInterruptsAfterSideEffect() {
+    String detail =
+        "MEMORY_OUTCOME_UNKNOWN：记忆保存结果不确定，请勿重复保存；operationId="
+            + "11111111-1111-4111-8111-111111111111";
+    OryxTool tool = mock(OryxTool.class);
+    when(tool.execute("{}"))
+        .thenAnswer(
+            ignored -> {
+              Thread.currentThread().interrupt();
+              return ToolResult.fail("shell", detail, false);
+            });
+    try {
+      ToolResult result =
+          new ToolExecutor(Map.of("shell", tool), audit).execute("s", call("shell"));
+      assertThat(result.success()).isFalse();
+      assertThat(result.retryable()).isFalse();
+      assertThat(result.errorMessage()).isEqualTo(detail);
+      assertThat(Thread.currentThread().isInterrupted()).isTrue();
+      verify(tool).execute("{}");
+      verify(audit)
+          .record(
+              eq("s"),
+              eq("test"),
+              eq("shell"),
+              eq("{}"),
+              eq(false),
+              isNull(),
+              eq(detail),
+              anyLong());
+    } finally {
+      Thread.interrupted();
+    }
+  }
+
+  @Test
   @DisplayName("审计故障不重放已执行工具且不伪造第二次审计")
   void auditFailureDoesNotReplay() {
     OryxTool tool = mock(OryxTool.class);

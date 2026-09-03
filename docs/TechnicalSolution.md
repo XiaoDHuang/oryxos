@@ -1,5 +1,9 @@
 # OryxOS 技术方案
 
+> 007实施进度（2026-09-03）：Docker恢复后完成T080部署补救，实际64/80；Python unit377/377、PG集成65/65、真实容器HTTPS/SDK/PG用例8/8通过，源码与真实镜像已绑定。T049镜像安全门禁仍失败，T061缺获准内网模型/embedding，Mem0不可启用；不豁免未处置告警。详见[验收台账](../specs/007-memory-backends/acceptance.md)。
+
+> **007安全回移决议（2026-08-31已批准）**：Mem0 1.0.11固定源码保留，仅回移官方CVE-2026-7597的FAISS补丁，构建诚实标识的1.0.11+oryx.1 wheel；不启用FAISS、不改变提炼算法或Maven模块。源码与wheel摘要、反序列化回归及来源绑定的扫描处置见[SDK安全回移契约](../specs/007-memory-backends/contracts/sdk-security-backport.md)。原始扫描仍保留，未知告警不放行；全部回归由主模型执行。
+
 本文档定义 OryxOS 的技术方案，回答 How 的问题。前置阅读《项目篇 OryxOS 业界调研》和《OryxOS 需求文档》。本文档以需求文档定义的五大核心能力（对接 LLM、ReAct 循环、Memory 记忆、Plugin Tool、Web Service）为骨架展开，每个模块只给职责和功能说明，不展开代码细节。代码层面的实现细节在研发阶段补充。
 
 > **2026-08-30 范围决议（方案 B）**：006 文件式 Memory 已归档；007 承接 Markdown / SQLite / 自托管 Mem0 三后端，属于已获用户批准的核心范围扩张。2026-08-31进入实施：默认兼容已提交，SQLite已实现并通过本地验收，Mem0尚未实现。默认仍为单 JAR + 本地 Markdown，外部记忆服务必须显式启用且通过数据边界门禁。实际进度及待验收项见 [007 范围记录](decisions/007-memory-backends-scope.md)。
@@ -223,11 +227,15 @@ Mem0 plan 必须锁定自托管部署版本与实际协议，核验核心全量�
 
 现有 `oryxos-tool → oryxos-memory → core/storage`，Sandbox 位于 tool，memory 不得反向依赖 tool。用户已批准 007 提前补齐 HTTP 白名单：memory 定义 `MemoryOutboundGuard`，tool 提供仅放行白名单 HTTP 的 `HttpWhitelistSandbox`，boot 负责组合；其他动作仍拒绝，不提前完成第 24 节全部 Sandbox。没有接线的 Mem0 路径必须拒绝执行。
 
-**007 追加范围（用户已批准，尚未实现）**：原版 Mem0 REST 无法直接满足完整读取、历史先保全及内部审计，增加 `integrations/mem0-adapter/` 受控 Python 组件，与 Mem0 的运行依赖一起部署，不新增 Maven 模块、不进入默认单 JAR 路径。固定 Mem0 1.0.11 的已核验提炼调用点，使用请求级暂存适配，禁止直接调用原版 server 修改真实存储；核心保存绕过推理。外部组件使用 PostgreSQL + pgvector，当前状态、追加版本历史及操作结果在同一写事务提交，原始输入先登记；这属于存储事务适配，不自研检索算法或另建 Agent runtime。
+**007 追加范围（用户已批准，实施中、尚未通过运行准入）**：原版 Mem0 REST 无法直接满足完整读取、历史先保全及内部审计，增加 `integrations/mem0-adapter/` 受控 Python 组件，与 Mem0 的运行依赖一起部署，不新增 Maven 模块、不进入默认单 JAR 路径。固定 Mem0 1.0.11 的已核验提炼调用点，使用请求级暂存适配，禁止直接调用原版 server 修改真实存储；核心保存绕过推理。外部组件使用 PostgreSQL + pgvector，当前状态、追加版本历史及操作结果在同一写事务提交，原始输入先登记；这属于存储事务适配，不自研检索算法或另建 Agent runtime。
 
 外部组件协议定为 `oryx-memory-v1`，与原版 Mem0 API 明确区分。持久模型为 `memory_namespaces`、`memory_operations`、`memory_current`、`memory_versions`、`memory_call_audits`，仅在外部服务库，不改变本地 SQLite 四字段 memory_entries。快照按固定 revision 分页，核心全量、有效归档最近 100 条、语义召回最多 20 条；历史不参与常规召回。具体模型、状态机、配置和接口见 `specs/007-memory-backends/` 的设计契约。
 
+PostgreSQL字符类型不能存储U+0000，因此`oryx-memory-v1`在请求登记前拒绝含NUL的content/query，受控模型wrapper同样拒绝含NUL的fact/new_content。不能删除、替换、转义后写TEXT并仍称“原文保全”；请求hash的字段间NUL分隔符保持不变，本地Markdown/SQLite后端不受此远端限制。
+
 Java 增加受限的 `MemoryOperationException`，由统一工具适配器转成不可重试失败；只透传固定中文错误分类及操作 UUID，不透传远端正文。既有 Tool 审计仍以 `status=failed` 加错误分类表示超时/未知，不假称原端口可写结构化 timeout。设计核验与实际启用分开：新增组件可以按计划实现及故障注入测试，但真实环境的版本锁、安全扫描、全路径与审计证据通过前不得启用部署或声明后端验收完成。
+
+内建 Mem0 配置只在 `memory.backend=mem0` 且没有用户自定义 `MemoryService` 时绑定：base-url 为显式 ASCII/punycode HTTPS origin（无 userinfo/path/query/fragment，默认 443 规范化移除），token 为 32 字节的规范无 padding base64url，workspace-id 为小写带连字符非 nil UUID。connect/read 均为正且不超过 5s–55s 范围内的总 operation-timeout，缺省分别为 3s/30s/40s；本地后端与自定义门面不得提前解析这些值。
 
 **`MemoryTools` 子模块。** 把长期记忆暴露给 Agent 调用，包含 `save_memory` 和 `recall_memory` 两个内置 Tool，标注 `@Tool` 注解自动注册到 `ToolRegistry`，跟其他内置 Tool 一视同仁。
 

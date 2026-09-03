@@ -1,5 +1,7 @@
 # OryxOS AI 编程指南
 
+> 007补充实施纪律（2026-08-31）：用户批准最小官方SDK安全补丁回移，先执行新增T076–T079的来源锁、红绿测试、可重复构建和原始扫描/补丁处置证明，再继续暂存机制。用户最新确认所有代码、测试及回归均由主模型承担，不再调度Spark；具体验收见[SDK安全回移契约](../specs/007-memory-backends/contracts/sdk-security-backport.md)。
+
 > 本文档定义 OryxOS 的 AI 编程实施思路。主体思路是用 **Spec-Kit** 完成主体开发，把已有的需求文档和技术方案喂给 Spec-Kit，按五大核心能力拆成 5 个 user story 逐步实施；后续增量阶段切换到手动提示词配合 Claude Code。前置阅读《项目篇 OryxOS 业界调研》《OryxOS 需求文档》《OryxOS 技术方案》。本文档讲思路和拆解方法，不绑定具体时间安排，也不展开提示词细节。
 
 > 本文档以最新技术方案为准：核心阶段交付的是 Agent OS 的运行时内核，当前默认使用技术方案第 10 章的 9 个 Maven 模块，五大核心能力（对接 LLM、ReAct、Memory、Tool、Web Service）作为 5 个 user story 的骨架。模块边界只有在 feature plan 论证、用户批准并同步技术方案与 AGENTS.md 后才可演进。
@@ -294,6 +296,8 @@ US-1 + US-2 完成后跑 `/speckit.analyze` 检查 spec 跟代码一致性。
 2026-08-31用户已确认实施：US1已提交，US2已通过本地验收，按已生成tasks继续推进；这里的“生成后等确认”门禁已满足。实际执行记录见007的acceptance.md，不改变最终Spark回归和外部组件门禁。
 
 007 plan 的服务端适配追加范围已获用户批准：`integrations/mem0-adapter/` 是外部 Python 组件，不是第十个 Maven 模块。先验证固定 Mem0 调用点的暂存隔离与故障闭锁，再实现原始输入登记、版本历史和有效状态的事务提交、快照读取、操作凭据及内部调用审计。HTTP 白名单提前接入 tool，由 boot 注入 memory 窄端口。除 Java 完整 verify 外，还须生成 Python 依赖锁、运行 Python 测试/依赖安全扫描、镜像扫描及真实自托管验收；不能用 Maven 绿灯代表外部组件通过。新增表/公共类型以本 feature plan/contracts 清单为准，tasks 生成后仍停等实施确认。
+
+远端PG实现前须锁定可表示输入：Mem0请求正文/查询及模型生成文本含U+0000时在登记或提交前失败，不能靠PG异常、静默删除、替换字符或转义存储放宽“原文保全”。请求hash仍用NUL分隔固定字段；本地后端不套用该限制。测试必须分别覆盖请求拒绝、生成结果fatal和业务投影零变化。
 
 US-3 实施完成后跑 `/speckit.analyze`。
 

@@ -18,10 +18,17 @@ public final class MemoryTools {
   private static final String ARCHIVAL_SCOPE = "archival";
 
   private final MemoryService memoryService;
+  private final String successReply;
 
   /** 绑定唯一Memory端口. */
   public MemoryTools(MemoryService memoryService) {
+    this(memoryService, false);
+  }
+
+  /** 仅由组合配置选择Mem0完成文案，异常仍沿原端口抛出. */
+  MemoryTools(MemoryService memoryService, boolean processedReply) {
     this.memoryService = Objects.requireNonNull(memoryService, "MemoryService不能为空");
+    this.successReply = processedReply ? "记忆处理完成" : "已记住";
   }
 
   /** 保存一条长期记忆. */
@@ -30,7 +37,7 @@ public final class MemoryTools {
       @ToolParam(description = "要记住的内容", required = true) String content,
       @ToolParam(description = "core或archival,不确定可省略", required = false) String scope) {
     memoryService.remember(content, parseScope(scope));
-    return "已记住";
+    return successReply;
   }
 
   /** 按关键词回忆归档记忆. */

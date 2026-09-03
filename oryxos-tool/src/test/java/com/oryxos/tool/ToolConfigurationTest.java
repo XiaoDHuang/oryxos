@@ -27,8 +27,11 @@ import com.oryxos.core.tool.OryxTool;
 import com.oryxos.memory.MemoryTools;
 import com.oryxos.tool.mcp.McpClientService;
 import com.oryxos.tool.notify.WebhookNotifyAdapter;
+import com.oryxos.tool.sandbox.ActionType;
+import com.oryxos.tool.sandbox.HttpWhitelistSandbox;
 import com.oryxos.tool.sandbox.PermissiveSandbox;
 import com.oryxos.tool.sandbox.Sandbox;
+import com.oryxos.tool.sandbox.SandboxAction;
 import com.oryxos.tool.sandbox.SandboxViolationException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -84,11 +87,36 @@ class ToolConfigurationTest {
     new ApplicationContextRunner()
         .withUserConfiguration(CustomSandboxFixture.class, WebhookNotifyAdapter.class)
         .withConfiguration(AutoConfigurations.of(ToolConfiguration.class))
+        .withPropertyValues("http.allowed-domains[0]=https://invalid.example")
         .withBean(RestClient.Builder.class, RestClient::builder)
         .run(
             context -> {
               assertThat(context).hasNotFailed().hasSingleBean(Sandbox.class);
               assertSame(CustomSandboxFixture.CUSTOM, context.getBean(Sandbox.class));
+            });
+  }
+
+  @Test
+  @DisplayName("默认Sandbox只允许配置中的精确HTTP域名且继续拒绝其他动作")
+  void defaultSandboxUsesExactHttpDomainList() {
+    runner()
+        .withPropertyValues("http.allowed_domains[0]=Example.COM.")
+        .run(
+            context -> {
+              assertThat(context).hasNotFailed().hasSingleBean(Sandbox.class);
+              Sandbox sandbox = context.getBean(Sandbox.class);
+              assertThat(sandbox).isInstanceOf(HttpWhitelistSandbox.class);
+              sandbox.enforce(
+                  new SandboxAction(ActionType.HTTP_REQUEST, "https://example.com:8443/path"));
+              assertThrows(
+                  SandboxViolationException.class,
+                  () ->
+                      sandbox.enforce(
+                          new SandboxAction(
+                              ActionType.HTTP_REQUEST, "https://sub.example.com/path")));
+              assertThrows(
+                  SandboxViolationException.class,
+                  () -> sandbox.enforce(new SandboxAction(ActionType.FILE_ACCESS, "file.txt")));
             });
   }
 

@@ -7,11 +7,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.oryxos.core.tool.ToolResult;
+import com.oryxos.memory.MemoryOperationException;
+import com.oryxos.memory.MemoryOperationException.Code;
 import com.oryxos.tool.sandbox.SandboxViolationException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.DisplayName;
@@ -98,6 +101,25 @@ class AnnotatedToolAdapterTest {
     assertFalse(result.success());
     assertFalse(result.retryable());
     assertFalse(result.errorMessage().contains("secret-token"));
+  }
+
+  @Test
+  @DisplayName("记忆受限异常保留固定分类和操作编号且明确不可重试")
+  void mapsMemoryFailureWithoutLeakingOrRetrying() throws Exception {
+    var timeout = trusted("memoryTimeout").execute("{}");
+    assertFalse(timeout.success());
+    assertFalse(timeout.retryable());
+    assertEquals(
+        "MEMORY_TIMEOUT：记忆操作超时；operationId=11111111-1111-4111-8111-111111111111",
+        timeout.errorMessage());
+
+    var unknown = trusted("memoryUnknown").execute("{}");
+    assertFalse(unknown.success());
+    assertFalse(unknown.retryable());
+    assertEquals(
+        "MEMORY_OUTCOME_UNKNOWN：记忆保存结果不确定，请勿重复保存；operationId="
+            + "11111111-1111-4111-8111-111111111111",
+        unknown.errorMessage());
   }
 
   @Test
@@ -256,6 +278,18 @@ class AnnotatedToolAdapterTest {
     @Tool(description = "未知失败")
     public String broken() {
       throw new IllegalStateException("secret-token");
+    }
+
+    @Tool(description = "记忆超时")
+    public String memoryTimeout() {
+      throw new MemoryOperationException(
+          Code.MEMORY_TIMEOUT, UUID.fromString("11111111-1111-4111-8111-111111111111"));
+    }
+
+    @Tool(description = "记忆结果未知")
+    public String memoryUnknown() {
+      throw new MemoryOperationException(
+          Code.MEMORY_OUTCOME_UNKNOWN, UUID.fromString("11111111-1111-4111-8111-111111111111"));
     }
 
     @Tool(description = "安全拒绝")

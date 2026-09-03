@@ -1,0 +1,15 @@
+{
+  "sdk_version": "1.0.11+oryx.1",
+  "upstream_version": "1.0.11",
+  "git_commit": "144627c4ce5bc4db6acac17cbd158065f2b27a8d",
+  "hash_format": "sha256-utf8-lf (only CRLF checkout normalization)",
+  "files": {
+    "memory/main.py": "04035505fc37dce54a98e5868b6775d3f57f40c4f070e6d6463138286e98e3e1",
+    "memory/utils.py": "0ade2e4b68122df61003ea289bbe2c86247c5dc92e18776abcb5e9fba6dcce2f",
+    "configs/prompts.py": "05be41d3d0ea7e877fbde2875d146a15624435e32ca04949bc4f6304a9bd7cad",
+    "memory/telemetry.py": "6d9eb33ebb1e18867d4bce335fb271822e7086c2d48b139b4f933cf1f753adde",
+    "memory/setup.py": "9cb440f135b943fac6504a347e3f00f6b2cc47cecd0b5fa8a76717bd176d3d66",
+    "memory/base.py": "bb093eacbeb409b12b043b7df9b3152b895a00bb5ce30776a1e56c915cf17777",
+    "vector_stores/base.py": "c9bf5309cc718a6cdd25df2f7cd25144e1c1ad4c982db1f6ebe13addf725703a"
+  }
+}

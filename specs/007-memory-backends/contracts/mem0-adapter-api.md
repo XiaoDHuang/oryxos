@@ -7,7 +7,7 @@
 - HTTPS，JSON UTF-8；前缀 `/oryx-memory/v1`。所有请求必须认证，包括 capabilities；不暴露原生 /configure、/reset、任意删除和历史查询入口。
 - `Authorization: Bearer ...`；API key由安全随机源生成32字节，编码为规范无padding的base64url token（43个ASCII字符）。摘要为token原始ASCII字节的SHA-256小写hex，不包含Bearer前缀、不先解码或trim。启动只加载§7的摘要/工作区绑定，比较摘要使用恒定时间比较；缺绑定失败，不提供默认key。每个路径workspace必须与凭证一致。格式校验不能证明随机性，随机生成由Secret管理流程保证。
 - Java 生成 operation_id UUID；重用 ID 必须有相同请求hash。算法为SHA-256，输出小写hex：UTF-8编码的protocol、标准小写workspace UUID、kind、scope四个字段依次以NUL分隔，末尾再接NUL和精确正文（SAVE content或RECALL query）。前四字段只允许规定字面量，正文不作Unicode规范化；拒绝非法Unicode，不采用平台默认编码。
-- content/query最大32KiB UTF-8，非空白；JSON请求体最大256KiB，拒绝未知字段/枚举。限额只针对远端协议，不改变006/SQLite能力。每个HTTP响应（包含JSON信封、转义、items及receipt）最大1MiB，按实际序列化后的UTF-8字节计数，不能用原文长度或条目数推算；细则见§3.1。
+- content/query最大32KiB UTF-8，非空白且不得含U+0000；JSON请求体最大256KiB，拒绝未知字段/枚举。NUL拒绝只作用于Mem0远端正文/查询，不能删除、替换或编码改写后继续处理；字段间请求hash的NUL分隔符保持不变，不改变006/SQLite能力。每个HTTP响应（包含JSON信封、转义、items及receipt）最大1MiB，按实际序列化后的UTF-8字节计数，不能用原文长度或条目数推算；细则见§3.1。
 - 响应均带服务生成的规范UUID request_id（固定36个ASCII字符，不直接透传来访header或上游ID）；operation响应带operation_id/workspace_id，状态和错误可判定。错误只用固定中文模板，不包含凭证、远端原始响应或栈；request_id等信封字段均计入响应预算。
 - SDK 固定 mem0ai 1.0.11 对应源码；server operation 处理期限 30 秒，SQL 语句/锁等待及模型请求均受剩余期限约束。同步处理，无业务后台推理队列。
 
@@ -45,13 +45,15 @@ RECEIVED/RUNNING凭据同样包含operation_id/workspace_id/kind/scope/request_h
 ### 3.1 生成结果与序列化预算
 
 - 内部LLM/embedding单次请求及响应各最多1MiB实际HTTP实体字节，在发送/解析前检查；超限不得无限读取或交SDK宽松解析。
-- 单次提炼最多64个facts，单次动作决策最多128项（含NONE）；每条待保存fact/new_content须为合法Unicode、非空白且≤32KiB UTF-8。全部暂存变更也受128项上限约束；超限立即置fatal，保留输入/失败审计，但不提交current/versions。
+- 单次提炼最多64个facts，单次动作决策最多128项（含NONE）；每条待保存fact/new_content须为合法Unicode、不含U+0000、非空白且≤32KiB UTF-8。全部暂存变更也受128项上限约束；超限或NUL立即置fatal，保留输入/失败审计，但不提交current/versions。
 - 写事务提交前必须验证生成条目、暂存动作及完整成功receipt的序列化预算。用与HTTP发送相同的序列化规则，计入所有固定字段以及replayed取值的两种包装；不得在COMMITTED后才发现响应超限。超限产生422 ENGINE_LIMIT_EXCEEDED和匹配的FAILED凭据，不能转成NOOP或静默舍弃SAVE动作。
 - RECALL先取排序后的最多20个候选，再选择能放入1MiB完整receipt的最长完整前缀，returned_count等于items长度；因字节不足少于候选数时truncated_by_bytes=true，否则false。至少一个候选存在但连一个完整项也容不下时，明确返回RESULT_LIMIT_EXCEEDED，不冒充无匹配；无匹配才返回空items且flag=false。
 - 快照分页按完整页信封预算分页，不删条目或改total_count；单项无法放入时明确失败，不产生空的非终页。对已有不合规数据也不得截字绕过。Java仍独立校验1MiB硬上限、计数与标记。
 - 边界用例包含双引号、反斜杠、Unicode转义和多字节文本；20条各32KiB的合法原文不代表JSON响应必然≤1MiB。
 
 ## 4. 原子提交与恢复
+
+实现基础（T032）：共享`contracts.py`使用冻结的Request/OperationIdentity及分状态receipt类型，不把StagedResult转换为成功凭据。持久终态JSON不含逐次HTTP的request_id/replayed；发送时在同层补入这两个字段，使用排序键、无额外空白、ensure_ascii=false、禁止NaN的UTF-8序列化。路由后续负责生成新的request_id，不能透传来访ID。提交前以同一序列化器检查replayed=false/true两种完整包装；此DTO/预算能力本身不证明数据库已经提交。
 
 操作raw_input与不可延长的30秒deadline先独立登记；RECEIVED即有期限，重复ID不刷新期限，只有未过期记录可取得owner。模型只作用暂存，所有模型请求通过受控wrapper持久化STARTED/终态审计。SDK异常即便被内部捕获，也必须通过fatal latch阻止提交。
 
@@ -95,6 +97,8 @@ complete=true时next_cursor必须为null；否则必须非空页且cursor前进�
 
 ## 7. 部署契约
 
+2026-08-31用户批准的安全回移覆盖下述SDK原始基线：实际安装为`mem0ai 1.0.11+oryx.1`，仅回移官方FAISS补丁，基线Git及原算法不变；capabilities中的SDK版本须如实报告受控版本。来源与扫描判据见[SDK安全回移契约](sdk-security-backport.md)，不得重新装回未修复的1.0.11或直接升级到新算法。
+
 设计基线：Python 3.12.14；mem0ai 1.0.11；FastAPI 0.141.1、uvicorn 0.52.4、psycopg 3.3.4；PostgreSQL 17.11 + pgvector 0.8.6。Mem0源码依赖固定到Git SHA 144627c4ce5bc4db6acac17cbd158065f2b27a8d，不仅依赖版本标签；构建记录实际文件摘要。版本已从官方源核验；兼容解析、全传递锁和镜像digest尚需在实现时产出，未通过测试/漏洞扫描不得部署。
 
 环境/Secret 输入：ADAPTER_DATABASE_URL、ADAPTER_CLIENT_BINDINGS（workspace/key摘要绑定）、ADAPTER_CURSOR_SECRET、ADAPTER_LLM_BASE_URL/MODEL/API_KEY、ADAPTER_EMBEDDING_BASE_URL/MODEL/API_KEY/DIMENSIONS、ADAPTER_ALLOWED_ORIGINS、ADAPTER_TLS_CERT/KEY、MEM0_DIR。禁止缺值时回退云端；模型/embedding精确origin必须在允许清单及基础设施出口策略内。
@@ -120,3 +124,11 @@ ADAPTER_CURSOR_SECRET也是安全随机32字节的规范无padding base64url；H
 MEM0_TELEMETRY=false 必须在 import 前生效；禁 graph/reranker/vision/默认云路由，忽略隐式 proxy/OpenRouter 环境继承。固定 MEM0_DIR（有非业务config文件），SDK内容日志不能进入外发日志系统。标准TLS验证、显式模型身份、按剩余deadline调用；密钥不进参数正文/审计JSON/异常。
 
 capabilities 要求 protocol=oryx-memory-v1、staged_engine/atomic_history/revision_pagination=true、固定限额与schema版本；这是兼容性检查，不替代真实故障注入和出站/审计证据。
+
+### 7.2 启动校验的实现边界（T031–T032）
+
+- Settings仅接受上述显式必填字符串，不trim Secret或默补地址；只解析配置，不连接数据库/模型。模型身份与请求包装复用同一个Endpoint规则。embedding维度为规范十进制正整数，当前基础类型上限为有符号32位；实际vector(D)上限、已有schema维度及模型相容性仍须T036验证，不能仅凭正整数放行部署。
+- DATABASE_URL为显式单目标postgresql/postgres URI，必须含用户名、密码、host和数据库名；不接收libpq键值串、service或多主机隐式路由。query只接受sslmode、sslrootcert、sslcert、sslkey、connect_timeout、application_name，重复/未知参数、authority覆盖和空值拒绝。此处是无连接的结构检查，不证明DB出口/TLS/权限合规；实际连接的环境继承控制和部署检查由后续持久层/R3完成。
+- TLS_CERT/KEY为存在的绝对普通文件路径，启动用标准SSL加载并校验证书/私钥配对，最低TLS1.2；加密私钥缺解锁渠道时固定失败，不交互询问密码。不得将公开单测证书/私钥用于部署，它们不进入运行镜像。
+- MEM0_DIR为显式、已存在、可写的绝对目录，不自动新建或退回用户主目录。SDK导入前拒绝config.json链接/非普通文件，关闭遥测并固定解析后的目录；已缓存导入的SDK拒绝重新配置，失败后须以干净进程重新启动。目录ACL和实际文件系统隔离仍属于部署门禁，应用检查不是防竞态的OS沙箱。
+- 本阶段只返回配置、TLS上下文和经过源校验的暂存类型，不构造原生Memory、数据库连接、FastAPI路由或模型客户端，不声明capabilities已具备真实事务能力。

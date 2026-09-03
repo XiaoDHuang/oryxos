@@ -8,6 +8,7 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.regex.Pattern;
 import javax.sql.DataSource;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -35,6 +36,16 @@ class MemoryConfiguration {
   private static final Pattern AUTO_ID =
       Pattern.compile(
           "\\bID\\s+INTEGER\\s+PRIMARY\\s+KEY\\s+AUTOINCREMENT\\b", Pattern.CASE_INSENSITIVE);
+
+  @Configuration(proxyBeanMethods = false)
+  @ConditionalOnProperty(name = "memory.backend", havingValue = "mem0")
+  @ConditionalOnMissingBean({MemoryService.class, LongTermMemoryStore.class})
+  static class Mem0Configuration {
+    @Bean
+    Mem0MemoryStore mem0MemoryStore(Mem0Properties properties, MemoryOutboundGuard guard) {
+      return new Mem0MemoryStore(properties, guard);
+    }
+  }
 
   @Configuration(proxyBeanMethods = false)
   @ConditionalOnProperty(name = "memory.backend", havingValue = "sqlite")
@@ -83,8 +94,8 @@ class MemoryConfiguration {
 
   @Bean
   @ConditionalOnMissingBean(MemoryTools.class)
-  MemoryTools memoryTools(MemoryService memoryService) {
-    return new MemoryTools(memoryService);
+  MemoryTools memoryTools(MemoryService memoryService, ObjectProvider<LongTermMemoryStore> stores) {
+    return new MemoryTools(memoryService, stores.getIfUnique() instanceof Mem0MemoryStore);
   }
 
   private static void validateSqliteSchema(DataSource source) {

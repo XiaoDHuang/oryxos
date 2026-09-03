@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "upstream_version": "1.0.11",
+  "version": "1.0.11+oryx.1",
+  "git_commit": "144627c4ce5bc4db6acac17cbd158065f2b27a8d",
+  "upstream_wheel": "upstream/mem0ai-1.0.11-py3-none-any.whl",
+  "upstream_url": "https://files.pythonhosted.org/packages/b8/b5/f822c94e1b901f8a700af134c2473646de9a7db26364566f6a72d527d235/mem0ai-1.0.11-py3-none-any.whl",
+  "upstream_sha256": "bcf4d678dc0a4d4e8eccaebe05562eae022fcdc825a0e3095d02f28cf61a5b6d",
+  "source_manifest_sha256": "4e96875bc24809d9c36c099fd45eb7c99c6cfe86dac8becc9cac2c4d49099d60",
+  "patch_commit": "62dca096f9236010ca15fea9ba369ba740b86b7a",
+  "patch_sha256": "e8102aeea2d369d78d06ac8636759acb344f4e63d520bd15acda453b84e3f121",
+  "upstream_patch_sha256": "3ee64ccac59de565572e86b98617aeef2c9604ab7b06b476e5767b1b5ee5d05e",
+  "patch_target": "mem0/vector_stores/faiss.py",
+  "official_git_blob": "54a9a50bace2e460bb4b599eda93f43cf05a8af2",
+  "official_faiss_sha256": "af1cc1517f94e89401577f0758e076c89f463ae49c20562407db301dbf936f07",
+  "wheel": "mem0ai-1.0.11+oryx.1-py3-none-any.whl",
+  "wheel_sha256": "a3bc3ee9c9d64d836f8f4df3198b142999a3a0e5b4aea6c7306deebdb852c127",
+  "fixed_ids": ["PYSEC-2026-2636", "CVE-2026-7597", "GHSA-xqxw-r767-67m7"]
+}

@@ -52,7 +52,7 @@ API key 绑定可访问 workspace_id；请求路径不能越权。相同 UUID �
 |---|---|---|
 | workspace_id, operation_id | UUID，联合 PK | 幂等逻辑调用；SAVE/RECALL 共用操作凭据 |
 | kind, scope | SAVE/RECALL；CORE/ARCHIVAL | RECALL 固定 ARCHIVAL；未知枚举拒绝 |
-| request_hash, raw_input | SHA-256 文本；TEXT | hash 含协议版本、workspace、kind、scope、原文；保留精确 Unicode 文本 |
+| request_hash, raw_input | SHA-256 文本；TEXT | hash 含协议版本、workspace、kind、scope、原文；除U+0000在协议边界拒绝外，保留精确 Unicode 文本 |
 | state | RECEIVED/RUNNING/COMMITTED/FAILED/ABORTED | 原文登记、处理、终态；详见下一节 |
 | baseline_revision, committed_revision | BIGINT，可空 | 推理快照及提交结果；RECALL 不递增 namespace |
 | owner_token, deadline_at | UUID，可空；TIMESTAMPTZ NOT NULL | 登记时即固定created_at+30秒期限；owner不能延长或自动重跑 |
@@ -70,7 +70,7 @@ API key 绑定可访问 workspace_id；请求路径不能越权。相同 UUID �
 | operation_id, action_index | UUID、INTEGER | 联合唯一(workspace_id,operation_id,action_index)；指向已登记操作 |
 | revision, created_revision | BIGINT | 此变更提交号、该条目首次提交号 |
 | event | ADD/UPDATE/DELETE | DELETE 仅使当前投影失效，不删历史；CORE 只允许 ADD |
-| old_content, new_content | TEXT，可空 | ADD 无 old、DELETE 无 new；每次动作原文均保留 |
+| old_content, new_content | TEXT，可空 | ADD 无 old、DELETE 无 new；每次动作原文均保留；含U+0000的生成内容提交前fatal |
 | previous_version_id | UUID，可空 | 条目版本链；UPDATE/DELETE 必须接当前前驱 |
 | changed_at | TIMESTAMPTZ | 提交时刻 |
 
@@ -81,7 +81,7 @@ API key 绑定可访问 workspace_id；请求路径不能越权。相同 UUID �
 | 字段组 | 类型 / 约束 | 含义 |
 |---|---|---|
 | workspace_id, memory_id | UUID，联合 PK | 当前有效条目 |
-| scope, content | 枚举；TEXT NOT NULL | 核心原文或当前有效归档；外部条目须合法Unicode、非空白且≤32KiB UTF-8 |
+| scope, content | 枚举；TEXT NOT NULL | 核心原文或当前有效归档；外部条目须合法Unicode、不含U+0000、非空白且≤32KiB UTF-8 |
 | version_id | UUID NOT NULL，关联 versions | 当前版本；工作区/条目身份必须一致 |
 | created_revision, updated_revision | BIGINT | 稳定排序和可见性 |
 | embedding | vector(D)，可空 | CORE 为 NULL；ARCHIVAL 为固定 D 维有限数值 |

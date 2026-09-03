@@ -7,9 +7,12 @@
 - 006 基线、007 tasks 与实现已完成；本机 JDK 21/Maven、隔离的测试工作区。
 - Java 依赖维持 plan 锁定版本；Python 3.12.14、受控适配源码、完整 uv.lock；外部镜像按 digest 固定。
 - 独立测试 PostgreSQL 17.11 + pgvector 0.8.6；禁止连接已有业务库或使用生产记忆。真实自托管测试须使用获准的内网模型/embedding 和企业 Secret。
+- PG测试只读取`ORYX_MEM0_TEST_DATABASE_URL`、`ORYX_MEM0_TEST_DATABASE_NAME`与`ORYX_MEM0_TEST_DATABASE_CONFIRM=DELETE:<database>`，不复用运行时DATABASE_URL。数据库名须匹配`oryx_mem0_*test`，数据库comment须由管理员预置为`ORYXOS_DISPOSABLE_TEST_DATABASE`；测试角色必须非superuser。远端测试库必须verify-full并给绝对CA路径，loopback可显式disable。缺任一条件时integration以错误退出，不skip或创建默认库。
 - TLS 证书链受信任，Mem0 origin 显式加入 http.allowed_domains。测试可用专属 CA；禁止 trust-all 或默认绕过 guard。
 - 外部绑定/允许目标严格采用适配协议§7.1的JSON数组；摘要不等于token，cursor密钥不与API token复用。示例仅示范格式，不能当作可用凭证。
-- 实现和测试用例编写仍由主模型承担；最终回归按用户要求交由 Spark 执行命令，不让它改写业务文件。若执行阶段不能使用指定模型，需如实报告，不能冒称已经使用。
+- 按2026-08-31用户最新确认，代码、测试与所有回归均由主模型执行，不再调度Spark。
+
+安全补丁增量按[SDK安全回移契约](contracts/sdk-security-backport.md)执行；仅有原始pip-audit命中数量不能判定受控回移构建是否通过，必须保留原始扫描并取得来源绑定的补丁回归/处置报告。
 
 ## 2. 本地后端
 
@@ -30,8 +33,9 @@ mvn -pl oryxos-boot -am test '-Dtest=MemorySystemIntegrationTest,MemoryBackendSy
 
 ```powershell
 uv sync --frozen --project integrations/mem0-adapter --python 3.12.14
-uv run --frozen --project integrations/mem0-adapter pytest -m 'not integration'
-uv run --frozen --project integrations/mem0-adapter pip-audit --strict
+uv run --frozen --directory integrations/mem0-adapter python scripts/sdk_build.py --check-installed
+uv run --frozen --directory integrations/mem0-adapter pytest -m 'not integration'
+uv run --frozen --directory integrations/mem0-adapter python scripts/audit_dependencies.py
 ```
 
 预期：实际Mem0 1.0.11私有调用点加载；模型/embedding用测试替身，staging engine不能换成理想假Store。验证SDK摘要/结构和无默认真实存储、graph/reranker/遥测网络访问。坏JSON、第二阶段失败、越scope/绕过暂存写入及history失败均fatal，业务投影零变化；合法NONE的metadata-only暂存更新则为NOOP成功，保留原始输入和receipt，不强求SDK原本没有的history事件。
@@ -45,11 +49,13 @@ Python依赖及镜像扫描结果分别留证，不能用 Java OWASP 报告替�
 ```powershell
 docker compose -f integrations/mem0-adapter/compose.yaml --profile mem0 config --quiet
 docker compose -f integrations/mem0-adapter/compose.yaml --profile mem0 up -d
-uv run --frozen --project integrations/mem0-adapter pytest -m integration
+uv run --frozen --directory integrations/mem0-adapter pytest -m integration
 mvn -pl oryxos-memory,oryxos-boot -am test '-Dtest=Mem0MemoryStoreContractTest,MemoryBackendSystemIntegrationTest' '-Dsurefire.failIfNoSpecifiedTests=false' '-Dtest.excludedGroups='
 ```
 
 外部集成只对显式配置的测试环境运行；凭证/地址缺失应失败或标明未执行，不能以 skip 算验收通过。停止测试服务使用 compose stop；不要删除已有卷或运行 down -v。
+
+每个PG用例前后fixture只删除已核验测试库中的固定`oryx_memory` schema；数据库名、确认串、PG 17.11、pgvector 0.8.6、非superuser及数据库comment任何一项不匹配时，不执行删除。测试库的创建、comment与权限配置由部署人员在测试外完成，fixture不获取管理员凭证或创建/删除数据库。
 
 ## 5. 可重放的验收场景
 
@@ -66,7 +72,7 @@ mvn -pl oryxos-memory,oryxos-boot -am test '-Dtest=Mem0MemoryStoreContractTest,M
 | 审计失败 | 内部调用开始审计失败则不发请求；结束审计失败禁止业务提交；UNKNOWN不得伪装COMPLETED |
 | 安全负例 | 缺guard/key、跨workspace/跨scope、重定向、未许可目标、云回退、超大/缓慢响应全部明确失败 |
 | 结果预算 | 验证64/65 facts、128/129动作、32KiB边界和内部1MiB边界；SAVE超预算在COMMITTED前失败，业务状态不变。20个合法条目经JSON转义超1MiB时RECALL返回完整排序前缀且标记true，不截正文、不伪装空结果 |
-| 配置格式 | 绑定未知字段/重复摘要（含同工作区重复）拒绝，不同key同workspace允许；origin的CSV、路径、默认端口归一化后重复拒绝；Secret复用拒绝，错误不回显原值 |
+| 配置格式 | 绑定未知字段/重复摘要（含同工作区重复）拒绝，不同key同workspace允许；origin的CSV、路径、默认端口归一化后重复拒绝；Secret复用拒绝，错误不回显原值；Mem0正文/查询/生成文本含U+0000时拒绝且业务投影不变，hash分隔符仍用NUL |
 | 工具链 | Mem0异常映射为success=false/retryable=false，超时/未知保留操作ID；SQLite审计failed+分类准确，不伪称status=timeout |
 | 切换 | 三后端全部6个有向组合与回切；不自动迁移/双写/删除，未选后端零数据访问 |
 

@@ -2,3 +2,10 @@
 CLAUDE.md symlink=true
 .claude/skills symlink=true
 .cursor/skills symlink=true
+
+# 受控SDK输入必须跨平台保留字节；上游diff中的空格是补丁数据。
+integrations/mem0-adapter/patches/*.patch -text -whitespace
+integrations/mem0-adapter/vendor/upstream/* -text -whitespace
+integrations/mem0-adapter/vendor/upstream-sdk-files.json -text
+integrations/mem0-adapter/vendor/*.whl -text
+integrations/mem0-adapter/vendor/sdk-lock.json text eol=lf

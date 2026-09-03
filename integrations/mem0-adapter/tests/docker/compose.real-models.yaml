@@ -1,0 +1,9 @@
+# 真实模型模式：models 服务由合成对端替换为 TLS 转发代理，后端是主机回环上的 Ollama。
+# 适配器仍在 mem0-egress 隔离内网（internal: true），只有代理经 test-host 到达主机 11434；
+# 模型推理全程发生在本机回环，没有任何数据离开这台机器。
+services:
+  models:
+    entrypoint: ["python", "/fixtures/model_proxy.py"]
+    environment:
+      MODEL_UPSTREAM: host.docker.internal:11434
+    networks: [mem0-egress, test-host]

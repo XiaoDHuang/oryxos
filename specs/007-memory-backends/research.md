@@ -1,5 +1,7 @@
 # 007 Research：后端可行性与准入
 
+实施补充（2026-08-31）：用户已批准保留1.0.11算法并回移官方CVE-2026-7597修复；上游PyPI wheel的149个SDK文件与固定Git树一致，受控构建仅改变FAISS源码与诚实元数据，采用1.0.11+oryx.1。[安全回移契约](contracts/sdk-security-backport.md)给出后续源验证、补丁回归与原始扫描处置；早期“等待决议”的记录保留为历史，不再阻止执行已批准补救任务。
+
 日期：2026-08-30。依据：[spec.md](spec.md)、[批准范围](../../docs/decisions/007-memory-backends-scope.md)、宪法 v3.0.0。
 
 **结论：原版 Mem0 OSS 直连不通过核心全量、历史先保全及内部审计门禁；用户已批准受控服务端适配和 HTTP 白名单追加范围。** 本轮完成暂存式适配的源码核验与 Phase 1 设计。下文保留原版缺口证据，并在 R9–R12 给出采用的机制；未实际部署、执行故障测试或验收 Mem0。
@@ -99,6 +101,8 @@ mvn -o -pl oryxos-memory,oryxos-boot -am dependency:tree "-Dincludes=org.springf
 导入仍会创建 [MEM0_DIR配置文件](https://github.com/mem0ai/mem0/blob/144627c4ce5bc4db6acac17cbd158065f2b27a8d/mem0/memory/setup.py)，须固定受控路径并关闭遥测；不能声称完全没有本地文件副作用。
 
 ## R10. 外部事务与快照
+
+**U001补充决议（2026-09-01）**: PostgreSQL TEXT不能表示U+0000，Mem0远端content/query及模型生成文本在登记/提交前拒绝NUL；不能静默转换后仍称原文保全。hash字段间NUL分隔符保持不变，本地后端不受影响。
 
 **Decision**: 外部PG同一库承载current/versions/operations/calls。原始输入先独立登记；推理读REPEATABLE READ快照，所有修改仅暂存。最终短事务锁operation与namespace，校验owner/期限/baseline revision，再原子提交current、追加版本和receipt。冲突不重推理；过期恢复只改状态。
 

@@ -8,8 +8,8 @@ import com.oryxos.tool.builtin.NotifyTools;
 import com.oryxos.tool.builtin.ShellTools;
 import com.oryxos.tool.mcp.McpClientService;
 import com.oryxos.tool.notify.WebhookNotifyAdapter;
+import com.oryxos.tool.sandbox.HttpWhitelistSandbox;
 import com.oryxos.tool.sandbox.Sandbox;
-import com.oryxos.tool.sandbox.SandboxViolationException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -20,9 +20,12 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.context.properties.bind.Bindable;
+import org.springframework.boot.context.properties.bind.Binder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.MethodIntrospector;
 import org.springframework.core.annotation.AnnotatedElementUtils;
+import org.springframework.core.env.Environment;
 import org.springframework.web.client.RestClient;
 
 /**
@@ -45,10 +48,12 @@ class ToolConfiguration {
 
   @Bean
   @ConditionalOnMissingBean(Sandbox.class)
-  Sandbox sandbox() {
-    return action -> {
-      throw new SandboxViolationException("尚未配置真实白名单，拒绝外部动作");
-    };
+  Sandbox sandbox(Environment environment) {
+    List<String> allowedDomains =
+        Binder.get(environment)
+            .bind("http.allowed-domains", Bindable.listOf(String.class))
+            .orElseGet(List::of);
+    return new HttpWhitelistSandbox(allowedDomains);
   }
 
   @Bean

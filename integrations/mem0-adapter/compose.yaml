@@ -1,0 +1,100 @@
+services:
+  postgres:
+    profiles: ["mem0"]
+    # 派生镜像移除 gosu：容器全程以 postgres(999) 运行，无 root 阶段，无需任何额外 capabilities。
+    build:
+      context: ./postgres
+    image: oryxos/mem0-postgres:0.8.6-pg17-rm-gosu
+    user: "999:999"
+    environment:
+      POSTGRES_DB_FILE: /run/secrets/postgres_database
+      POSTGRES_USER_FILE: /run/secrets/postgres_user
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets: [postgres_database, postgres_user, postgres_password, postgres_app_password]
+    volumes:
+      - mem0-postgres:/var/lib/postgresql/data
+      - ./scripts/postgres-init:/docker-entrypoint-initdb.d:ro
+    networks: [mem0-internal]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$(cat /run/secrets/postgres_user) -d $$(cat /run/secrets/postgres_database)"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    restart: unless-stopped
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+
+  adapter:
+    profiles: ["mem0"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SOURCE_MANIFEST_SHA256: ${SOURCE_MANIFEST_SHA256:?required}
+    image: oryxos/mem0-adapter:1.0.11-oryx.1
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ADAPTER_LLM_BASE_URL: ${ADAPTER_LLM_BASE_URL:?required}
+      ADAPTER_LLM_MODEL: ${ADAPTER_LLM_MODEL:?required}
+      ADAPTER_EMBEDDING_BASE_URL: ${ADAPTER_EMBEDDING_BASE_URL:?required}
+      ADAPTER_EMBEDDING_MODEL: ${ADAPTER_EMBEDDING_MODEL:?required}
+      ADAPTER_EMBEDDING_DIMENSIONS: ${ADAPTER_EMBEDDING_DIMENSIONS:?required}
+      ADAPTER_ALLOWED_ORIGINS: ${ADAPTER_ALLOWED_ORIGINS:?required}
+      ADAPTER_TLS_CERT: /run/secrets/adapter_tls_cert
+      ADAPTER_TLS_KEY: /run/secrets/adapter_tls_key
+    secrets:
+      - adapter_database_url
+      - adapter_client_bindings
+      - adapter_cursor_secret
+      - adapter_llm_api_key
+      - adapter_embedding_api_key
+      - adapter_tls_cert
+      - adapter_tls_key
+    volumes:
+      - mem0-config:/var/lib/oryx-mem0
+    ports:
+      - "127.0.0.1:${ORYX_MEM0_PORT:-8443}:8443"
+    # mem0-internal 仅用于适配器与 Postgres 之间；mem0-egress 是到获准内网模型端点的唯一出站路径，
+    # 部署方须在该网络上施加出口策略，应用层 ADAPTER_ALLOWED_ORIGINS 每次请求仍精确校验。
+    networks: [mem0-internal, mem0-egress]
+    read_only: true
+    tmpfs: ["/tmp:rw,noexec,nosuid,nodev,size=64m"]
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 256
+    restart: unless-stopped
+
+networks:
+  mem0-internal:
+    internal: true
+  mem0-egress:
+
+volumes:
+  mem0-postgres:
+  mem0-config:
+
+secrets:
+  postgres_database:
+    file: ${POSTGRES_DATABASE_FILE:?required}
+  postgres_user:
+    file: ${POSTGRES_USER_FILE:?required}
+  postgres_password:
+    file: ${POSTGRES_PASSWORD_FILE:?required}
+  postgres_app_password:
+    file: ${POSTGRES_APP_PASSWORD_FILE:?required}
+  adapter_database_url:
+    file: ${ADAPTER_DATABASE_URL_FILE:?required}
+  adapter_client_bindings:
+    file: ${ADAPTER_CLIENT_BINDINGS_FILE:?required}
+  adapter_cursor_secret:
+    file: ${ADAPTER_CURSOR_SECRET_FILE:?required}
+  adapter_llm_api_key:
+    file: ${ADAPTER_LLM_API_KEY_FILE:?required}
+  adapter_embedding_api_key:
+    file: ${ADAPTER_EMBEDDING_API_KEY_FILE:?required}
+  adapter_tls_cert:
+    file: ${ADAPTER_TLS_CERT_FILE:?required}
+  adapter_tls_key:
+    file: ${ADAPTER_TLS_KEY_FILE:?required}

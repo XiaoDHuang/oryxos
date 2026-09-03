@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.oryxos.core.tool.OryxTool;
 import com.oryxos.core.tool.ToolResult;
+import com.oryxos.memory.MemoryOperationException;
 import com.oryxos.tool.sandbox.SandboxViolationException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -115,6 +116,9 @@ public final class AnnotatedToolAdapter implements OryxTool {
       Throwable cause = exception.getCause();
       if (cause instanceof SandboxViolationException violation) {
         throw violation;
+      }
+      if (cause instanceof MemoryOperationException memoryFailure) {
+        return ToolResult.fail(name, memoryFailure.safeMessage(), false);
       }
       if (cause instanceof InterruptedException) {
         Thread.currentThread().interrupt();

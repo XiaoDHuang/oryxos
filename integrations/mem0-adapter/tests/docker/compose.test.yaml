@@ -1,0 +1,38 @@
+services:
+  postgres:
+    ports: ["127.0.0.1:0:5432"]
+    networks: [mem0-internal, test-host]
+    restart: "no"
+  adapter:
+    image: ${T049_IMAGE:?required}
+    environment:
+      SSL_CERT_FILE: /run/secrets/test_ca
+    secrets: [test_ca]
+    restart: "no"
+  models:
+    profiles: ["mem0"]
+    image: python:3.12.14-slim@sha256:2fe5997d249a808b8eeea52c58a1dbffbba28754dc11699ef5c029f2d818ce79
+    entrypoint: ["python", "/fixtures/model_server.py"]
+    environment:
+      PYTHONDONTWRITEBYTECODE: "1"
+    volumes:
+      - ${T049_FIXTURES:?required}:/fixtures:ro
+      - ${T049_CERTIFICATES:?required}:/certs:ro
+    secrets: [model_control]
+    networks: [mem0-egress]
+    ports: ["127.0.0.1:0:9443"]
+    user: "65534:65534"
+    read_only: true
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    restart: "no"
+networks:
+  # T049所有模型响应均在隔离网络内合成，禁止适配器访问外部网络。
+  mem0-egress:
+    internal: true
+  test-host:
+secrets:
+  test_ca:
+    file: ${T049_CA_FILE:?required}
+  model_control:
+    file: ${T049_MODEL_CONTROL_FILE:?required}
