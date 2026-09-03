@@ -1,0 +1,31 @@
+{
+  "description": "获准的合成语料：仅供真实本地模型验收提炼/合并/替换/空事实/同义召回，不包含任何真实业务数据。",
+  "cases": [
+    {
+      "name": "extract_preference",
+      "input": "林一是后端工程师。林一的主力开发语言是Java。林一最近在重构支付网关。",
+      "expect_recall": {"query": "林一的主力语言", "anchor": "Java"}
+    },
+    {
+      "name": "replace_outdated_fact",
+      "inputs": ["项目的 Java 版本是 17。", "更正：项目的 Java 版本现在是 21，不再是 17。"],
+      "expect_recall": {"query": "项目使用的 Java 版本", "anchor": "21"},
+      "expect_superseded": "Java 17"
+    },
+    {
+      "name": "merge_duplicate",
+      "inputs": ["林一喜欢喝美式咖啡。", "林一喜欢喝美式咖啡。"],
+      "expect_recall": {"query": "林一的饮品偏好", "anchor_any": ["咖啡", "coffee", "Americano", "美式"]}
+    },
+    {
+      "name": "legal_empty_facts",
+      "input": "（本次没有需要记录的内容）",
+      "expect_noop": true
+    },
+    {
+      "name": "synonym_recall",
+      "input": "部署目标是 Kubernetes 集群。",
+      "expect_recall": {"query": "服务发布到哪个容器编排平台", "anchor_any": ["Kubernetes", "K8s", "k8s"]}
+    }
+  ]
+}

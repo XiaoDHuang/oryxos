@@ -43,7 +43,7 @@ def deployed_real():
 
 
 def test_real_model_save_history_restart_and_recall(deployed_real):
-    content = "我是后端工程师林一，主力语言是Java，服务框架用Spring Boot，部署目标是Kubernetes，饮品偏好只喝美式咖啡。"
+    content = "林一是后端工程师。林一的主力开发语言是Java。林一用Spring Boot写服务。部署目标是Kubernetes。林一只喝美式咖啡。"
     # 真实提炼+动作选择+嵌入受协议30秒期限约束；PUT同步等待终态。
     operation, (status, saved) = deployed_real.save(content, "ARCHIVAL")
     assert status == 200, saved

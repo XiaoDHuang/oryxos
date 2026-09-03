@@ -286,7 +286,9 @@ class AuditedLlm:
                 state.fail(Code.INVALID_RESULT)
         phase = "FACT_EXTRACTION" if self._calls == 0 else "ACTION_SELECTION"
         self._calls += 1
-        request = {"model": self.endpoint.model, "messages": messages, "response_format": {"type": "json_object"}}
+        # 记忆提炼/动作是结构化判定任务：固定零温度消除抽样漂移，不允许端点差异改变语义。
+        request = {"model": self.endpoint.model, "messages": messages,
+                   "response_format": {"type": "json_object"}, "temperature": 0}
         body = json_bytes(state, request)
         self.endpoint.target("chat/completions")
 

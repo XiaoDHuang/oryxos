@@ -45,6 +45,37 @@ class MemoryBackendFixture extends MemorySystemIntegrationTest.RuntimeFixture {
       MemorySystemIntegrationTest.Scenario scenario,
       RowProbe source)
       throws Exception {
+    return runner(workspace, backend, scenario, source, null);
+  }
+
+  /** mem0 运行额外接入真实HTTPS协议替身、出站Guard组合与白名单。 */
+  static ApplicationContextRunner runner(
+      Path workspace,
+      String backend,
+      MemorySystemIntegrationTest.Scenario scenario,
+      RowProbe source,
+      Mem0AdapterStub stub)
+      throws Exception {
+    var runner = baseRunner(workspace, backend, scenario, source);
+    if (stub == null) {
+      return runner;
+    }
+    return runner
+        .withConfiguration(
+            AutoConfigurations.of(Class.forName("com.oryxos.boot.MemoryOutboundConfiguration")))
+        .withPropertyValues(
+            "memory.mem0.api-key=" + stub.apiToken(),
+            "memory.mem0.base-url=" + stub.baseUri(),
+            "memory.mem0.workspace-id=" + stub.workspaceId(),
+            "http.allowed-domains=localhost,127.0.0.1");
+  }
+
+  private static ApplicationContextRunner baseRunner(
+      Path workspace,
+      String backend,
+      MemorySystemIntegrationTest.Scenario scenario,
+      RowProbe source)
+      throws Exception {
     var runner =
         new ApplicationContextRunner()
             .withConfiguration(
@@ -54,6 +85,7 @@ class MemoryBackendFixture extends MemorySystemIntegrationTest.RuntimeFixture {
                     TransactionAutoConfiguration.class,
                     SqlInitializationAutoConfiguration.class,
                     Class.forName("com.oryxos.memory.MemoryConfiguration"),
+                    Class.forName("com.oryxos.memory.Mem0PropertiesConfiguration"),
                     Class.forName("com.oryxos.tool.ToolConfiguration")))
             .withUserConfiguration(MemoryBackendFixture.class)
             .withBean(Path.class, () -> workspace)

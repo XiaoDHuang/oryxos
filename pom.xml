@@ -156,6 +156,12 @@
             </dependency>
             <dependency>
                 <groupId>com.oryxos</groupId>
+                <artifactId>oryxos-memory</artifactId>
+                <version>${project.version}</version>
+                <type>test-jar</type>
+            </dependency>
+            <dependency>
+                <groupId>com.oryxos</groupId>
                 <artifactId>oryxos-tool</artifactId>
                 <version>${project.version}</version>
             </dependency>

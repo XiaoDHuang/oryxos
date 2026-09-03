@@ -1,6 +1,6 @@
 # 007 Quickstart：实现后的验证指南
 
-本文件是 **计划阶段的验证路径**，不是执行记录。下列新增类、Python 目录和构建文件须在后续 implement 创建后才可运行；本轮未执行应用测试、启动服务、构建镜像或调用模型。
+本文件是实施完成后的验证路径。各节命令均在本机真实执行过，证据日志在 `.verification/007-memory-backends/`（不入库）。已实现 ≠ 已封板：R5 全仓最终回归见第 7 节，未完成前 007 不归档。
 
 ## 1. 前置条件
 
@@ -22,8 +22,10 @@
 
 ```powershell
 mvn -pl oryxos-memory,oryxos-storage,oryxos-tool,oryxos-core -am test
-mvn -pl oryxos-boot -am test '-Dtest=MemorySystemIntegrationTest,MemoryBackendSystemIntegrationTest' '-Dsurefire.failIfNoSpecifiedTests=false' '-Dtest.excludedGroups='
+mvn -pl oryxos-boot -am test '-Dtest=MemorySystemIntegrationTest,MemoryBackend*IntegrationTest' '-Dsurefire.failIfNoSpecifiedTests=false' '-Dtest.excludedGroups='
 ```
+
+三后端（含 mem0 经真实 HTTPS 协议替身）覆盖：`MemoryBackendSystemIntegrationTest`（注入顺序/无空段/重启生效）、`MemoryBackendSwitchIntegrationTest`（6 向切换/回切/两工作区隔离/零网络与零行访问）、`MemoryBackendAuditIntegrationTest`（成功/拒绝/超时确认/未知/审计故障）。
 
 预期：保留 006 断言；新增 Store 契约、SQLite Converter/Repository、配置选择、HTTP Sandbox及失败映射均通过。数据库探针证明未选 SQLite Memory 的行 SELECT/INSERT/UPDATE/DELETE 为零；共享 Session/审计连接与 schema 元数据初始化不算 Memory 行访问。
 
@@ -50,7 +52,21 @@ Python依赖及镜像扫描结果分别留证，不能用 Java OWASP 报告替�
 docker compose -f integrations/mem0-adapter/compose.yaml --profile mem0 config --quiet
 docker compose -f integrations/mem0-adapter/compose.yaml --profile mem0 up -d
 uv run --frozen --directory integrations/mem0-adapter pytest -m integration
-mvn -pl oryxos-memory,oryxos-boot -am test '-Dtest=Mem0MemoryStoreContractTest,MemoryBackendSystemIntegrationTest' '-Dsurefire.failIfNoSpecifiedTests=false' '-Dtest.excludedGroups='
+mvn -pl oryxos-memory,oryxos-boot -am test '-Dtest=Mem0MemoryStoreContractTest,MemoryBackend*IntegrationTest' '-Dsurefire.failIfNoSpecifiedTests=false' '-Dtest.excludedGroups='
+```
+
+隔离容器验收（真实镜像+HTTPS+PG；模型对端可合成或本地真实模型）：
+
+```powershell
+# 创建唯一命名隔离部署；输出为状态目录（含测试凭证，不入库）
+uv run --frozen --directory integrations/mem0-adapter python tests/docker/harness.py setup --image oryxos/mem0-adapter:<t049-源码绑定tag>
+# 真实本地模型（Ollama mistral-nemo:12b + bge-m3，GPU 回环，不出域）：
+#   setup 时追加 --real-models；先 ollama pull 两个模型
+$env:ORYX_MEM0_DOCKER_TEST_DIR = '<setup 输出的状态目录>'
+$env:ORYX_DOCKER = 'D:/Docker/resources/bin/docker.exe'
+uv run --frozen --directory integrations/mem0-adapter pytest tests/docker/test_deployed_api.py
+uv run --frozen --directory integrations/mem0-adapter pytest tests/integration/test_runtime_smoke.py tests/integration/test_live_models.py
+uv run --frozen --directory integrations/mem0-adapter python tests/docker/harness.py stop --directory $env:ORYX_MEM0_DOCKER_TEST_DIR
 ```
 
 外部集成只对显式配置的测试环境运行；凭证/地址缺失应失败或标明未执行，不能以 skip 算验收通过。停止测试服务使用 compose stop；不要删除已有卷或运行 down -v。
@@ -88,4 +104,4 @@ mvn clean verify
 
 不跳过 OWASP、Spotless、P3C、Checkstyle、SpotBugs/Find Security Bugs 等插件。另保存显式 integration 结果、Python pytest/pip-audit、镜像漏洞与digest、6向切换和真实自托管验收证据，再执行实现一致性审查。
 
-当前证据只有方案源码核验与上轮离线 dependency:tree 成功；上述应用/安全/运行验收均待实现后执行，不代表 007 已完成。
+当前状态：R1（依赖/镜像安全）经逐项处置台账门禁通过（`t068-image-audit-gate-full.json`）；R2 事务机制、R3 API/出口、R4 真实本地模型均已通过；**R5 全仓封板回归（本节命令 + OWASP 不跳过 + 最终一致性审查）未执行，007 不归档**。

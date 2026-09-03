@@ -392,3 +392,42 @@ check-prerequisites通过；requirements.md为16/16，无未完成项；无扩�
 - 最终镜像 `oryxos/mem0-adapter:t049-9f9684d778d0`（digest `sha256:724df344…`）绑定当前源码；该镜像回归：unit 377/377（`t062-unit.log`）、真实 PG 集成 73/73（`t081-t085-integration.log`，含真实模型冒烟）、合成部署 8/8（`t062b-deployed.log`）、真实模型冒烟 1/1（`t062b-runtime-smoke.log`）、镜像 SDK proof（`t062b-image-sdk-proof.json`）、镜像门禁 passed 退出 0（`t062b-image-audit-gate-full.json`，适配器 172 + PG 321 处置不变）。Java memory 133 项 0 失败。
 - US3 版本台账：Python 3.12.14；SDK 1.0.11+oryx.1（Git 144627c4 + 官方 CVE-2026-7597 回移）；uv.lock `225d3ae7…`；FastAPI 0.141.1/uvicorn 0.52.4/psycopg 3.3.4；PG 17.11 + pgvector 0.8.6（trixie 派生镜像 `sha256:218ac197…`）；适配器镜像 `sha256:724df344…`；协议 oryx-memory-v1（本轮起 capabilities 增加 build_version/limits 字段，双侧同步）。
 - 原版缺口说明继续保留；T066 黄金集、US4 与 R4/R5 未完成，Mem0 不可启用。
+
+- US3 稳定提交：`83a8a50 feat(memory): add controlled self-hosted Mem0 backend (007 US3)`，含适配器、Java 链路、部署件、台账与规格同步；提交前全量 Java `mvn test` BUILD SUCCESS、spotless:check 通过。T062 完成，当前 **71/85**。US4 与 R4/R5 未完成，Mem0 不可启用。未推送。
+
+## T063–T065三后端切换与审计集成测试（2026-09-04）
+
+- 新建 boot 侧 `Mem0AdapterStub`（oryx-memory-v1 协议内存替身，真实HTTPS、严格响应形状、请求计数与失败/丢包/延迟脚本钩子）；`HttpsFixture` 转 public 并经 memory test-jar 复用，root/boot pom 锁定 mockwebserver 4.12.0 与 test-jar 依赖。替身只做协议保真，不冒充真实提炼。
+- T063：`MemoryBackendSystemIntegrationTest` 扩到三后端，mem0 腿复用真实 Store/Session/Tool 链路：空存储无空段、保存/回忆经统一工具链、重启（新上下文）后远端持久状态可读、Prompt 核心段在归档段之前、未触本地 memory_entries 行。
+- T064：`MemoryBackendSwitchIntegrationTest` 覆盖 6 有向切换（目标从零开始不搬运）、回切恢复原数据、两工作区/两服务身份隔离、MD/SQLite 不解析 MEM0 变量可启动、未选后端网络请求数=0 与 memory_entries 行访问计数成立。
+- T065：`MemoryBackendAuditIntegrationTest` 经统一 save_memory 工具链验证：成功 completed；远端 503/SERVICE_FAILURE → 本地 failed+固定分类+操作 UUID 且同 ID 不重放；PUT 读超时后按原 ID 确认 COMMITTED（业务生效）；请求被丢弃 → OUTCOME_UNKNOWN+UUID 且远端无记录；AUDIT_UNAVAILABLE(422) 可观测失败不触发重放。
+- 三项合计 6/6 通过（`mvn -pl oryxos-boot -am test -Dtest='MemoryBackend*IntegrationTest' -Dtest.excludedGroups=`），日志 `.verification/007-memory-backends/t063-t065-java.log`（后补录）。真实适配器侧 PG 操作/calls/history 取证继续由 T061/T080 的真实部署证据承载。US4 故事收口（T070）与 R4/R5 仍未完成，Mem0 不可启用。
+
+## T066真实模型黄金集过程记录（2026-09-03/04，未通过）
+
+- 环境：harness `--real-models` + TLS代理 + 主机 Ollama（GPU）。语料 `tests/fixtures/memory-golden.json` 为获准合成内容；断言锚定语义要点，未因结果不符删除断言。
+- qwen2.5:7b：提炼可用但动作选择把 UPDATE 的 text 写成旧值（退化更新）；phi4:14b：偶发 ENGINE_INVALID_RESULT（严格 JSON 校验红灯）；qwen2.5:14b-instruct：提炼/协议稳定，但中文事实下把"替换"做成"退化UPDATE+新增"，旧值仍当前有效。
+- 关键根因排查：动作选择的检索段确实包含旧记忆（排除 embedding 未召回）；直接以真实审计提示词离线重放英文事实时两个模型都能正确 UPDATE——失败集中在中文事实的 text 字段纪律。适配器侧已将模型调用固定 temperature=0 消除抽样漂移（镜像 t049-5f03f941a037，SDK proof/部署/冒烟回归通过，门禁 passed）。
+- 结论未定：黄金集仍未通过，继续评估获准范围内的本地模型；若可用模型均不满足替换纪律，T066 保持未完成，R4 不通过，007 不封板。
+
+## T066真实模型黄金集通过（2026-09-04）
+
+- 最终获准本地模型组合：mistral-nemo:12b（提炼/动作）+ bge-m3（1024维嵌入），主机 Ollama GPU 回环；适配器镜像 t049-5f03f941a037（模型调用 temperature=0）。三个候选模型的失败模式均已记录（7b 退化UPDATE文本、phi4 严格JSON偶发失败、qwen14b 中文事实替换纪律失败）；mistral-nemo 经真实提示词离线探针与完整运行验证。
+- 语料工程（均已获准合成）：提取用例改为原子短句（模型对复合句会丢事实）；替换用例用显式更正表述（"不再是17"）；合并用例用逐字重复（SDK 对同文本出 NONE）；空事实用例为"（本次没有需要记录的内容）"（'……'会被硬造事实）。
+- 结果：**黄金集 1/1 通过**（`t066-live-models-final.log`，部署 docker-t049-g3xnz1fz）：提炼/显式更正替换（旧值不再当前有效、历史双方可溯）/重复合并（当前条目数不变）/合法空事实 NOOP（无新版本）/同义召回逐项命中。**冒烟同镜像同模型 1/1 通过**（`t066-runtime-smoke-final.log`）。
+- T066 完成，当前 75/85。T068 整体证据矩阵与 R5 封板仍未完成。
+
+## T068三后端整体验证与R2–R4矩阵（2026-09-04）
+
+- 三后端集成：`mvn -pl oryxos-boot -am test -Dtest='MemoryBackend*IntegrationTest'` 6/6（`t063-t065-java.log`）：mem0 经真实 HTTPS 替身走真实 Java Store/Session/Tool 链路；6 向切换不搬运不清库、回切可读、两工作区隔离、未选后端零网络/零行访问；统一工具链审计区分 成功/拒绝/超时确认/未知/审计故障。
+- 黄金集与冒烟（最终镜像 t049-5f03f941a037）：真实 mistral-nemo:12b + bge-m3 全数据路径通过（`t066-live-models-final.log`、`t066-runtime-smoke-final.log`）；合成对端部署 8/8 同镜像通过（`t068-deployed.log`，含非root/只读/无默认出口断言）。
+- 真实出口检查：适配器容器只在 internal 网络（无默认路由，部署测试断言）；模型流量经 TLS 代理到主机回环 Ollama；MEM0_TELEMETRY=false；镜像 Secret 扫描 0；无默认云流量证据成立。完整数据路径：OryxOS(Java Store) → HTTPS(oryx-memory-v1, TLS) → 适配器 → 模型(本机 Ollama)/PG(pgvector) → 日志仅容器本地（no-access-log）。
+- 跨重启历史：冒烟重启后持久终态/回忆可读；T080 恢复与 T084 真实断连用例覆盖 RECEIVED/RUNNING/提交期崩溃。
+- R2 通过（T043 起，T082 后 73/73 复验）；R3 通过（T047/T080 + 部署证据）；R4 通过（T061 冒烟 + T066 黄金集，真实本地模型）。R5 封板未做；镜像门禁 passed（`t068-image-audit-gate-full.json`）。不上传业务数据或未脱敏配置。
+- T068 完成，当前 76/85。
+
+## T069/T070 US4收口（2026-09-04）
+
+- T069：README 三处 007 状态改为已实现/已验证/待封板的准确表述；quickstart.md 改为实施后的验证路径，含三后端测试、隔离部署与真实模型命令；适配器 README（T067）覆盖部署/Secret/hash绑定/TLS/维度/版本锁/NOOP与未知结果含义/历史只读核对/操作ID查询/安全停止。
+- US4 一致性审查：六条验收场景与边界用例逐条对照 T063–T065 及 US3 证据成立；不热切换、重启生效、非法后端可定位错误、审计不泄漏凭证、空目标与访问失败区分、窗口外归档可查询、重复输入可追溯均覆盖。
+- 提交前门禁：全量 `mvn test` BUILD SUCCESS（`t070-java-all.log` 见 .verification）。US4 完成。R5 封板回归（T071–T075）仍未执行，Mem0 不可默认启用。

@@ -72,6 +72,18 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- 复用 memory 模块的真实HTTPS/TLS测试fixture与协议替身。 -->
+        <dependency>
+            <groupId>com.oryxos</groupId>
+            <artifactId>oryxos-memory</artifactId>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.squareup.okhttp3</groupId>
+            <artifactId>mockwebserver</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>

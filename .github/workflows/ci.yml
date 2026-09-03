@@ -34,3 +34,73 @@ jobs:
             echo "::warning::NVD_API_KEY secret not set — skipping OWASP dependency-check (get a free key at https://nvd.nist.gov/developers/request-an-api-key)"
             mvn --batch-mode --no-transfer-progress -Ddependency-check.skip=true clean verify
           fi
+
+  mem0-adapter-fast:
+    name: mem0-adapter fast gates (frozen lock + unit + dependency audit)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.14'
+
+      - name: Install uv 0.10.11
+        run: pip install uv==0.10.11
+
+      - name: Frozen sync and SDK provenance check
+        working-directory: integrations/mem0-adapter
+        run: |
+          uv sync --frozen --python 3.12.14
+          uv run --frozen python scripts/sdk_build.py --check-installed
+
+      - name: Unit tests (no integration)
+        working-directory: integrations/mem0-adapter
+        run: uv run --frozen pytest -q -m 'not integration'
+
+      - name: Source-bound dependency audit (PyPI advisory, no NVD key needed)
+        working-directory: integrations/mem0-adapter
+        run: uv run --frozen python scripts/audit_dependencies.py
+
+  # 封板全量门禁（真实模型、镜像扫描复核与最终回归）只在显式获准的环境执行，
+  # CI 不默认访问云端模型、不注入业务 Secret；此处的快门绿不等同 R1–R5 全量验收。
+  mem0-adapter-integration:
+    name: mem0-adapter isolated PG integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.14'
+
+      - name: Install uv 0.10.11
+        run: pip install uv==0.10.11
+
+      - name: Start isolated PostgreSQL 17.11 + pgvector 0.8.6
+        run: |
+          docker pull pgvector/pgvector:0.8.6-pg17-trixie@sha256:71f806616c90e1de182cacfae8ac1f9ef00f0f34ee8c53b9042495db8689ccf2
+          docker run -d --name oryx-pg -e POSTGRES_PASSWORD=ci-isolated -p 127.0.0.1:5432:5432 \
+            pgvector/pgvector:0.8.6-pg17-trixie@sha256:71f806616c90e1de182cacfae8ac1f9ef00f0f34ee8c53b9042495db8689ccf2
+          for i in $(seq 1 30); do docker exec oryx-pg pg_isready -U postgres && break; sleep 2; done
+          docker exec oryx-pg psql -U postgres -c "CREATE ROLE oryx_mem0_app LOGIN PASSWORD 'ci-isolated';"
+          docker exec oryx-pg psql -U postgres -c "CREATE DATABASE oryx_mem0_ci_test OWNER oryx_mem0_app;"
+          docker exec oryx-pg psql -U postgres -d oryx_mem0_ci_test -c "CREATE EXTENSION vector VERSION '0.8.6';"
+          docker exec oryx-pg psql -U postgres -d oryx_mem0_ci_test -c "COMMENT ON DATABASE oryx_mem0_ci_test IS 'ORYXOS_DISPOSABLE_TEST_DATABASE';"
+
+      - name: Run isolated PG integration tests
+        working-directory: integrations/mem0-adapter
+        env:
+          ORYX_MEM0_TEST_DATABASE_URL: postgresql://oryx_mem0_app:ci-isolated@127.0.0.1:5432/oryx_mem0_ci_test?sslmode=disable&connect_timeout=3&application_name=oryx_mem0_integration
+          ORYX_MEM0_TEST_DATABASE_NAME: oryx_mem0_ci_test
+          ORYX_MEM0_TEST_DATABASE_CONFIRM: DELETE:oryx_mem0_ci_test
+        run: |
+          uv sync --frozen --python 3.12.14
+          uv run --frozen pytest -q tests/integration -k 'not runtime_smoke and not live_models'
+

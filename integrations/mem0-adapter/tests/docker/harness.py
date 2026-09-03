@@ -14,7 +14,7 @@ from uuid import uuid4
 ROOT = Path(__file__).resolve().parents[2]
 EVIDENCE = ROOT.parents[1] / ".verification/007-memory-backends"
 PYTHON_IMAGE = "python:3.12.14-slim@sha256:2fe5997d249a808b8eeea52c58a1dbffbba28754dc11699ef5c029f2d818ce79"
-LLM_MODEL = "qwen2.5:7b-instruct"
+LLM_MODEL = "mistral-nemo:12b"
 EMBEDDING_MODEL = "bge-m3"
 EMBEDDING_DIMENSIONS = "1024"
 DATABASE = "oryx_mem0_t049_test"

@@ -98,7 +98,7 @@ OryxOS 把自己锚在这个不会变的需求上：**私有部署、完全可�
 |---|---|---|
 | 1 | **对接 LLM** | 通过 Provider 抽象对接 DeepSeek、通义、Kimi、智谱、混元、豆包、Anthropic、OpenAI 等主流大模型，Agent 不感知具体调的是哪家，运行时切换无 lock-in |
 | 2 | **ReAct 循环** | Agent 的核心工作机制：LLM 思考是否调用工具、调用后看结果、再决定下一步，直到给出最终响应 |
-| 3 | **Memory 三层记忆** | 会话记忆 + 长期记忆（默认 `MEMORY.md`；007 规划 SQLite / 自托管 Mem0 可选后端）+ 情景记忆（扩展阶段） |
+| 3 | **Memory 三层记忆** | 会话记忆 + 长期记忆（默认 `MEMORY.md`；007 已实现 SQLite / 自托管 Mem0 可选后端，默认仍为 Markdown）+ 情景记忆（扩展阶段） |
 | 4 | **Tool 体系** | 内置文件 / Shell / HTTP 工具，Plugin Tool 三档接入：零代码写 `SKILL.md` 复用 MCP、轻代码自写 MCP server、重代码 `@Tool` 注解写 Spring Bean |
 | 5 | **Web Service** | 完整 REST API 对外暴露，业务系统一句 HTTP 调用就能用上 Agent，是企业把 AI 能力嵌入已有系统的唯一通道 |
 
@@ -126,7 +126,7 @@ OryxOS 是一个 Spring Boot 3.x 单体应用，跑在 JDK 21 上。对外只有
 - **Spring AI 只用一半**：只用它的 Provider 协议转换和 `@Tool` 的 Schema 生成，禁用其自动 tool 执行，调度完全由 OryxOS 自己的 `ToolExecutor` 控制
 - **同步阻塞 + Java 21 virtual thread**，代码直观又能扛住高并发
 - **Sandbox 用 Path/Pattern 白名单**，不用已在 JDK 21 废弃的 `SecurityManager`
-- **SQLite 保存 Session/审计，长期记忆默认 `MEMORY.md`**；007 默认兼容已提交，SQLite 长期后端本地验收通过，自托管 Mem0 尚未实现，不改变默认本地运行方式
+- **SQLite 保存 Session/审计，长期记忆默认 `MEMORY.md`**；007 三后端已实现：Markdown 默认兼容、SQLite 本地验收通过、自托管 Mem0（受控适配器 + 独立 PG）在隔离环境通过协议/事务/真实本地模型验收；默认本地运行方式不变，Mem0 默认关闭且仍需封板门禁
 
 工程上是 **Maven 多模块（9 个模块）**：`oryxos-core`（引擎）、`oryxos-provider`（能力一）、`oryxos-memory`（能力三）、`oryxos-tool`（能力四）、`oryxos-web`（能力五）、`oryxos-channel-cli`、`oryxos-storage`、`oryxos-cli`、`oryxos-boot`。
 
@@ -225,7 +225,7 @@ OryxOS 定位严监管企业，**安全是 day one 的架构设计，不是事�
 
 ## 项目状态
 
-OryxOS 目前处于**核心阶段实施中**：Maven 9 模块与 fat JAR 已就绪；006 文件式 Memory 已归档提交（`3d60ee0`）。007 已进入实现，默认 Markdown 兼容已在 `2a63e58` 提交，SQLite 后端本地验收通过；获准的外部受控 Mem0 适配及 HTTP 白名单尚未实现，整个007未封板，详见 [007 验收台账](specs/007-memory-backends/acceptance.md)。
+OryxOS 目前处于**核心阶段实施中**：Maven 9 模块与 fat JAR 已就绪；006 文件式 Memory 已归档提交（`3d60ee0`）。007 三后端默认 Markdown 兼容（`2a63e58`）、SQLite 后端（`5333e77`）与受控自托管 Mem0 适配器（US3，`83a8a50`）均已提交实现；镜像安全门禁与真实本地模型（mistral-nemo/bge-m3 本机回环）验收已通过，US4 切换/审计集成测试已绿；R5 全仓封板回归未做，007 未归档，详见 [007 验收台账](specs/007-memory-backends/acceptance.md)。
 
 核心阶段目标：用 4 周 / 12 小时的最短链路，交付一个可演示的最小完整 Agent OS **运行时内核**——配置一个 Agent、通过 CLI 跟它对话、它能调用 LLM 和工具完成任务，并能通过 REST API 对外暴露。企业级治理能力（多租户、SSO、完整审计、Tool Policy）不在这一阶段范围内，由扩展阶段和社区接力补齐。
 
@@ -263,7 +263,7 @@ OryxOS 目前处于**核心阶段实施中**：Maven 9 模块与 fat JAR 已就�
 | Web 层 | Spring MVC |
 | 命令行 | Picocli |
 | 配置解析 | SnakeYAML |
-| 持久化 | 已有 SQLite + Spring Data JPA（Session/审计）与默认 `MEMORY.md`；007 规划 `memory_entries` / 自托管 Mem0 可选长期后端 |
+| 持久化 | 已有 SQLite + Spring Data JPA（Session/审计）与默认 `MEMORY.md`；007 已实现 `memory_entries` / 自托管 Mem0 可选长期后端（默认仍 Markdown，切换重启生效，不做数据迁移） |
 | 外部工具集成 | MCP Java SDK（Model Context Protocol） |
 | 日志 | Logback + SLF4J |
 | 可观测性（扩展阶段） | Micrometer + Prometheus |

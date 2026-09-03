@@ -20,7 +20,7 @@ import javax.net.ssl.TrustManagerFactory;
 import okhttp3.mockwebserver.MockWebServer;
 
 /** 为后续远端适配测试提供不依赖生产信任设置的专属TLS端点. */
-final class HttpsFixture implements AutoCloseable {
+public final class HttpsFixture implements AutoCloseable {
 
   private static final long KEYTOOL_TIMEOUT_SECONDS = 20;
   private static final String CA_ALIAS = "oryx-test-ca";
@@ -50,7 +50,7 @@ final class HttpsFixture implements AutoCloseable {
     this.serverCertificate = serverCertificate;
   }
 
-  static HttpsFixture open() {
+  public static HttpsFixture open() {
     Path directory = null;
     char[] password = randomPassword();
     try {
@@ -93,17 +93,17 @@ final class HttpsFixture implements AutoCloseable {
     }
   }
 
-  MockWebServer server() {
+  public MockWebServer server() {
     ensureOpen();
     return server;
   }
 
-  SSLContext clientSslContext() {
+  public SSLContext clientSslContext() {
     ensureOpen();
     return clientSslContext;
   }
 
-  X509Certificate certificateAuthority() {
+  public X509Certificate certificateAuthority() {
     ensureOpen();
     return certificateAuthority;
   }
@@ -113,7 +113,7 @@ final class HttpsFixture implements AutoCloseable {
     return serverCertificate;
   }
 
-  URI uri(String path) {
+  public URI uri(String path) {
     ensureOpen();
     URI relative = URI.create(path);
     if (!path.startsWith("/")

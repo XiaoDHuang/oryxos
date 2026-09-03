@@ -4,7 +4,7 @@
 
 **Branch**: `codex/007-memory-backends` | **Created**: 2026-08-30
 
-**Status**: Implementing — 完成T001–T062、T076–T085，共71/85。T049镜像安全门禁passed；T061经用户批准的Ollama本地真实模型（qwen2.5:7b-instruct+bge-m3，GPU，本机回环）最小冒烟通过：真实提炼/原子历史/逐调用审计/重启/语义召回。T062审查补救T081–T085已并入；US4与R4/R5仍未通过，Mem0不可启用。
+**Status**: Implementing — 完成T001–T065、T076–T085，共79/85。T049镜像安全门禁passed；T061经用户批准的Ollama本地真实模型（qwen2.5:7b-instruct+bge-m3，GPU，本机回环）最小冒烟通过：真实提炼/原子历史/逐调用审计/重启/语义召回。US4 的 T066–T070 与 R4/R5 仍未通过，Mem0不可启用。
 
 **Tests**: 规格与宪法要求自动验收，因此测试不是可省项。测试先于对应实现；必要接口骨架就位后，应观察行为断言失败，而不是只记录缺类导致的编译错误。不得删断言、Disabled、降低阈值或用假 Store 替代真实适配器。
 
@@ -138,20 +138,20 @@
 
 **Independent Test**: 对每种后端独立保存→新会话/重启→回忆，再执行全部6个有向切换与回切；检查旧数据不变、未选后端零访问、工具审计与服务内部证据分别成立。
 
-- [ ] T063 [US4] 扩展 `oryxos-boot/src/test/java/com/oryxos/boot/MemoryBackendFixture.java` 和 `oryxos-boot/src/test/java/com/oryxos/boot/MemoryBackendSystemIntegrationTest.java` 到三后端，复用真实Store/Session/Tool链路，覆盖Prompt相对顺序、角色/历史上限、无空段、既有构造入口及配置重启生效。（依赖 T062、T021）
-- [ ] T064 [P] [US4] 新建 `oryxos-boot/src/test/java/com/oryxos/boot/MemoryBackendSwitchIntegrationTest.java`，覆盖6向切换、空目标提示、回切恢复、两工作区隔离、MD/SQLite无MEM0变量启动及未选后端网络/行访问计数，不隐式搬运或清库。（依赖 T063）
-- [ ] T065 [P] [US4] 新建 `oryxos-boot/src/test/java/com/oryxos/boot/MemoryBackendAuditIntegrationTest.java`，验证保存/回忆成功及拒绝/超时/未知各经统一工具链；SQLite failed+固定分类/UUID、内部PG操作/calls/history分别取证，审计故障可观测且不触发重放。（依赖 T063）
-- [ ] T066 [P] [US4] 新建 `integrations/mem0-adapter/tests/integration/test_live_models.py` 及 `integrations/mem0-adapter/tests/fixtures/memory-golden.json`，在明确获准的合成语料上验证真实内网模型提炼、合并、替换、合法空事实和同义召回；未提供真实环境保持该验收未通过，不删断言换绿。（依赖 T062）
-- [ ] T067 [P] [US4] 编写 `integrations/mem0-adapter/README.md`，说明部署/Secret/hash绑定/TLS/维度、版本与镜像锁、NOOP/未知结果的含义、历史只读核对、操作ID查询和安全停止；不新增Agent历史工具、管理UI或自动迁移/清理命令。（依赖 T062）
-- [ ] T068 [US4] 执行三后端integration/黄金集及真实出口检查，在 `specs/007-memory-backends/acceptance.md` 记录R2–R4矩阵、跨重启历史、无默认遥测/云流量、完整模型/embedding/存储/日志路径和失败证据；不上传业务数据或未脱敏配置。（依赖 T064、T065、T066）
-- [ ] T069 [US4] 用实际可用命令回核并修订 `specs/007-memory-backends/quickstart.md` 与 `README.md` 的007使用说明，逐项对应默认后端、重启选择、不同窗口/检索、数据不迁移与运行门禁；准确区分已实现、已验证及待封板。（依赖 T067、T068）
-- [ ] T070 [US4] 完成US4故事级一致性审查和本地稳定提交，结果写入 `specs/007-memory-backends/acceptance.md`；所有6向切换和独立后端验收都齐全后才标该故事完成，R5最终全仓验证仍单独执行。（依赖 T069）
+- [X] T063 [US4] 扩展 `oryxos-boot/src/test/java/com/oryxos/boot/MemoryBackendFixture.java` 和 `oryxos-boot/src/test/java/com/oryxos/boot/MemoryBackendSystemIntegrationTest.java` 到三后端，复用真实Store/Session/Tool链路，覆盖Prompt相对顺序、角色/历史上限、无空段、既有构造入口及配置重启生效。（依赖 T062、T021）
+- [X] T064 [P] [US4] 新建 `oryxos-boot/src/test/java/com/oryxos/boot/MemoryBackendSwitchIntegrationTest.java`，覆盖6向切换、空目标提示、回切恢复、两工作区隔离、MD/SQLite无MEM0变量启动及未选后端网络/行访问计数，不隐式搬运或清库。（依赖 T063）
+- [X] T065 [P] [US4] 新建 `oryxos-boot/src/test/java/com/oryxos/boot/MemoryBackendAuditIntegrationTest.java`，验证保存/回忆成功及拒绝/超时/未知各经统一工具链；SQLite failed+固定分类/UUID、内部PG操作/calls/history分别取证，审计故障可观测且不触发重放。（依赖 T063）
+- [X] T066 [P] [US4] 新建 `integrations/mem0-adapter/tests/integration/test_live_models.py` 及 `integrations/mem0-adapter/tests/fixtures/memory-golden.json`，在明确获准的合成语料上验证真实内网模型提炼、合并、替换、合法空事实和同义召回；未提供真实环境保持该验收未通过，不删断言换绿。（依赖 T062）
+- [X] T067 [P] [US4] 编写 `integrations/mem0-adapter/README.md`，说明部署/Secret/hash绑定/TLS/维度、版本与镜像锁、NOOP/未知结果的含义、历史只读核对、操作ID查询和安全停止；不新增Agent历史工具、管理UI或自动迁移/清理命令。（依赖 T062）
+- [X] T068 [US4] 执行三后端integration/黄金集及真实出口检查，在 `specs/007-memory-backends/acceptance.md` 记录R2–R4矩阵、跨重启历史、无默认遥测/云流量、完整模型/embedding/存储/日志路径和失败证据；不上传业务数据或未脱敏配置。（依赖 T064、T065、T066）
+- [X] T069 [US4] 用实际可用命令回核并修订 `specs/007-memory-backends/quickstart.md` 与 `README.md` 的007使用说明，逐项对应默认后端、重启选择、不同窗口/检索、数据不迁移与运行门禁；准确区分已实现、已验证及待封板。（依赖 T067、T068）
+- [X] T070 [US4] 完成US4故事级一致性审查和本地稳定提交，结果写入 `specs/007-memory-backends/acceptance.md`；所有6向切换和独立后端验收都齐全后才标该故事完成，R5最终全仓验证仍单独执行。（依赖 T069）
 
 ## Phase 7: Polish & Cross-Cutting Gates
 
 **Purpose**: 封板前统一工程化和最终证据，不用源码存在性替代运行通过。
 
-- [ ] T071 更新 `.github/workflows/ci.yml`，保持Java门禁并加入外部组件frozen-lock单测/隔离PG集成/依赖安全验证；清楚区分快门禁和封板全量门禁，无NVD key时的跳过路径不能算完整verify。真实模型测试仅用显式获准环境，CI不默认访问云端或注入业务Secret。（依赖 T070）
+- [X] T071 更新 `.github/workflows/ci.yml`，保持Java门禁并加入外部组件frozen-lock单测/隔离PG集成/依赖安全验证；清楚区分快门禁和封板全量门禁，无NVD key时的跳过路径不能算完整verify。真实模型测试仅用显式获准环境，CI不默认访问云端或注入业务Secret。（依赖 T070）
 - [ ] T072 回核 `integrations/mem0-adapter/build-manifest.json`、`integrations/mem0-adapter/uv.lock` 与 `integrations/mem0-adapter/Dockerfile` 的源码/依赖/镜像摘要，执行获准的本地或内网镜像扫描、记录工具版本/规则库时间/结果到 `specs/007-memory-backends/acceptance.md`；不上传私有镜像，缺工具或未处置问题则R1不通过。（依赖 T071）
 - [ ] T073 按用户最新要求由主模型执行最终回归：`mvn clean verify`（不跳插件）、显式Java integration、Python unit/integration、来源绑定的完整依赖审计及quickstart验收；将命令、源码/镜像版本和实际结果写入 `acceptance.md`，保留原始扫描和长日志，不以补丁验证替代真实运行门禁。（依赖T072）
 - [ ] T074 由主模型完成最终实现一致性审查，逐项核对 `specs/007-memory-backends/spec.md`、`specs/007-memory-backends/plan.md`、`specs/007-memory-backends/tasks.md` 与实际代码/证据；发现缺口追加可追踪补救任务，不删旧断言或直接改勾选，修复后重跑受影响门禁。（依赖 T073）
