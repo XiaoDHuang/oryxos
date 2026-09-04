@@ -123,9 +123,12 @@ class AnnotatedToolAdapterTest {
   }
 
   @Test
-  @DisplayName("沙箱拒绝保留异常类型供唯一执行器审计")
-  void propagatesSandboxViolation() throws Exception {
-    assertThrows(SandboxViolationException.class, () -> trusted("denied").execute("{}"));
+  @DisplayName("沙箱拒绝转为不可重试失败且原因可读")
+  void mapsSandboxViolationToReadableFailure() throws Exception {
+    var result = trusted("denied").execute("{}");
+    assertFalse(result.success());
+    assertFalse(result.retryable());
+    assertEquals("禁止操作", result.errorMessage());
   }
 
   @Test
@@ -134,9 +137,10 @@ class AnnotatedToolAdapterTest {
     Payload.constructed.set(0);
     AnnotatedToolAdapter adapter =
         new AnnotatedToolAdapter(bean, Fixture.class.getMethod("total", Payload.class, List.class));
-    assertThrows(
-        SandboxViolationException.class,
-        () -> adapter.execute("{\"payload\":{\"value\":2},\"values\":[3]}"));
+    var result = adapter.execute("{\"payload\":{\"value\":2},\"values\":[3]}");
+    assertFalse(result.success());
+    assertFalse(result.retryable());
+    assertTrue(result.errorMessage().contains("执行许可"));
     assertEquals(0, Payload.constructed.get());
     assertEquals(0, bean.calls.get());
   }

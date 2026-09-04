@@ -111,11 +111,12 @@ public final class AnnotatedToolAdapter implements OryxTool {
       }
       return convertResult(method.invoke(bean, values));
     } catch (SandboxViolationException exception) {
-      throw exception;
+      // 安全拒绝原因由白名单自行构造、不含敏感数据,转为可读失败让模型知道此路不通。
+      return ToolResult.fail(name, exception.getMessage(), false);
     } catch (InvocationTargetException exception) {
       Throwable cause = exception.getCause();
       if (cause instanceof SandboxViolationException violation) {
-        throw violation;
+        return ToolResult.fail(name, violation.getMessage(), false);
       }
       if (cause instanceof MemoryOperationException memoryFailure) {
         return ToolResult.fail(name, memoryFailure.safeMessage(), false);

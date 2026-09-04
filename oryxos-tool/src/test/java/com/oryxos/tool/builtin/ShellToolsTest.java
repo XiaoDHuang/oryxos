@@ -18,9 +18,13 @@ import static org.mockito.Mockito.when;
 
 import com.oryxos.core.tool.ToolResult;
 import com.oryxos.tool.sandbox.ActionType;
+import com.oryxos.tool.sandbox.FileSandboxProperties;
+import com.oryxos.tool.sandbox.HttpSandboxProperties;
 import com.oryxos.tool.sandbox.PermissiveSandbox;
 import com.oryxos.tool.sandbox.Sandbox;
 import com.oryxos.tool.sandbox.SandboxViolationException;
+import com.oryxos.tool.sandbox.ShellSandboxProperties;
+import com.oryxos.tool.sandbox.WhitelistSandbox;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -110,6 +114,21 @@ class ShellToolsTest {
     ShellTools tools = new ShellTools(sandbox, starter, Duration.ofSeconds(1));
     assertThrows(SandboxViolationException.class, () -> tools.shell("echo test"));
     assertFalse(tools.shell(" ").success());
+    verifyNoInteractions(starter);
+  }
+
+  @Test
+  @DisplayName("真实白名单外命令被拦且进程零启动")
+  void whitelistDeniesCommandWithoutStartingProcess() {
+    @SuppressWarnings("unchecked")
+    Function<ProcessBuilder, Process> starter = mock(Function.class);
+    WhitelistSandbox whitelist =
+        new WhitelistSandbox(
+            new FileSandboxProperties(List.of()),
+            new ShellSandboxProperties(List.of("ls")),
+            new HttpSandboxProperties(List.of()));
+    ShellTools tools = new ShellTools(whitelist, starter, Duration.ofSeconds(1));
+    assertThrows(SandboxViolationException.class, () -> tools.shell("rm -rf x"));
     verifyNoInteractions(starter);
   }
 

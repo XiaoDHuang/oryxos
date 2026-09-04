@@ -6,8 +6,12 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.oryxos.tool.sandbox.ActionType;
+import com.oryxos.tool.sandbox.FileSandboxProperties;
+import com.oryxos.tool.sandbox.HttpSandboxProperties;
 import com.oryxos.tool.sandbox.PermissiveSandbox;
 import com.oryxos.tool.sandbox.SandboxViolationException;
+import com.oryxos.tool.sandbox.ShellSandboxProperties;
+import com.oryxos.tool.sandbox.WhitelistSandbox;
 import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -68,6 +72,24 @@ class HttpToolsTest {
     assertThrows(
         SandboxViolationException.class,
         () -> denied.httpPost(server.url("/deny").toString(), "{}"));
+    assertEquals(0, server.getRequestCount());
+  }
+
+  @Test
+  @DisplayName("真实白名单外与形似域名被拦且传输零请求")
+  void whitelistDeniesOutsideDomainWithoutAnyRequest() {
+    WhitelistSandbox whitelist =
+        new WhitelistSandbox(
+            new FileSandboxProperties(List.of()),
+            new ShellSandboxProperties(List.of()),
+            new HttpSandboxProperties(List.of("example.com")));
+    HttpTools guarded = new HttpTools(whitelist, RestClient.builder());
+    assertThrows(
+        SandboxViolationException.class, () -> guarded.httpGet(server.url("/deny").toString()));
+    assertThrows(
+        SandboxViolationException.class, () -> guarded.httpGet("https://evil-example.com/x"));
+    assertThrows(
+        SandboxViolationException.class, () -> guarded.httpPost("https://api.example.com/x", "{}"));
     assertEquals(0, server.getRequestCount());
   }
 

@@ -28,11 +28,11 @@ import com.oryxos.memory.MemoryTools;
 import com.oryxos.tool.mcp.McpClientService;
 import com.oryxos.tool.notify.WebhookNotifyAdapter;
 import com.oryxos.tool.sandbox.ActionType;
-import com.oryxos.tool.sandbox.HttpWhitelistSandbox;
 import com.oryxos.tool.sandbox.PermissiveSandbox;
 import com.oryxos.tool.sandbox.Sandbox;
 import com.oryxos.tool.sandbox.SandboxAction;
 import com.oryxos.tool.sandbox.SandboxViolationException;
+import com.oryxos.tool.sandbox.WhitelistSandbox;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -97,7 +97,7 @@ class ToolConfigurationTest {
   }
 
   @Test
-  @DisplayName("默认Sandbox只允许配置中的精确HTTP域名且继续拒绝其他动作")
+  @DisplayName("默认Sandbox按精确HTTP域名放行且空文件名单继续拒绝文件动作")
   void defaultSandboxUsesExactHttpDomainList() {
     runner()
         .withPropertyValues("http.allowed_domains[0]=Example.COM.")
@@ -105,7 +105,7 @@ class ToolConfigurationTest {
             context -> {
               assertThat(context).hasNotFailed().hasSingleBean(Sandbox.class);
               Sandbox sandbox = context.getBean(Sandbox.class);
-              assertThat(sandbox).isInstanceOf(HttpWhitelistSandbox.class);
+              assertThat(sandbox).isInstanceOf(WhitelistSandbox.class);
               sandbox.enforce(
                   new SandboxAction(ActionType.HTTP_REQUEST, "https://example.com:8443/path"));
               assertThrows(
@@ -135,14 +135,40 @@ class ToolConfigurationTest {
               assertEquals(7, registry.all().size());
               String target =
                   directory.resolve("should-not-exist").toString().replace("\\", "\\\\");
+              var denied =
+                  registry
+                      .asMap()
+                      .get("write_file")
+                      .execute("{\"path\":\"" + target + "\",\"content\":\"x\"}");
+              assertFalse(denied.success());
+              assertTrue(denied.errorMessage().contains("路径不在白名单内"));
+              assertFalse(Files.exists(directory.resolve("should-not-exist")));
+            });
+  }
+
+  @Test
+  @DisplayName("三个白名单键全部缺省时三类动作一律拒绝")
+  void missingWhitelistKeysDenyAllActionTypes() {
+    runner()
+        .run(
+            context -> {
+              assertThat(context).hasNotFailed().hasSingleBean(Sandbox.class);
+              Sandbox sandbox = context.getBean(Sandbox.class);
+              assertThat(sandbox).isInstanceOf(WhitelistSandbox.class);
               assertThrows(
                   SandboxViolationException.class,
                   () ->
-                      registry
-                          .asMap()
-                          .get("write_file")
-                          .execute("{\"path\":\"" + target + "\",\"content\":\"x\"}"));
-              assertFalse(Files.exists(directory.resolve("should-not-exist")));
+                      sandbox.enforce(
+                          new SandboxAction(
+                              ActionType.FILE_ACCESS, directory.resolve("a.txt").toString())));
+              assertThrows(
+                  SandboxViolationException.class,
+                  () -> sandbox.enforce(new SandboxAction(ActionType.SHELL_EXEC, "ls")));
+              assertThrows(
+                  SandboxViolationException.class,
+                  () ->
+                      sandbox.enforce(
+                          new SandboxAction(ActionType.HTTP_REQUEST, "https://example.com/x")));
             });
   }
 

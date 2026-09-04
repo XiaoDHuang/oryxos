@@ -50,6 +50,7 @@ oryxos:
       base-url: ${KIMI_BASE_URL:https://api.moonshot.cn}
 
 # Sandbox whitelist keys are fixed by the technical solution.
+# 任一白名单置空（或缺省）= 该类动作全部拒绝，而非不校验；非法配置项启动期即失败。
 file:
   allowed_paths:
     - .oryxos

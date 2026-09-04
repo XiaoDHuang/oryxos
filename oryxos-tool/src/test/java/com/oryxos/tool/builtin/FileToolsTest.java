@@ -9,10 +9,14 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verifyNoInteractions;
 
 import com.oryxos.tool.sandbox.ActionType;
+import com.oryxos.tool.sandbox.FileSandboxProperties;
+import com.oryxos.tool.sandbox.HttpSandboxProperties;
 import com.oryxos.tool.sandbox.PermissiveSandbox;
 import com.oryxos.tool.sandbox.Sandbox;
 import com.oryxos.tool.sandbox.SandboxAction;
 import com.oryxos.tool.sandbox.SandboxViolationException;
+import com.oryxos.tool.sandbox.ShellSandboxProperties;
+import com.oryxos.tool.sandbox.WhitelistSandbox;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.AccessDeniedException;
 import java.nio.file.Files;
@@ -110,5 +114,29 @@ class FileToolsTest {
     assertFalse(guarded.writeFile(directory.resolve("x").toString(), null).success());
     assertFalse(guarded.listDir(null).success());
     verifyNoInteractions(sandbox);
+  }
+
+  @Test
+  @DisplayName("真实白名单外读写被拦且文件系统零副作用")
+  void whitelistDeniesOutsideRootWithoutTouchingFilesystem() throws Exception {
+    WhitelistSandbox whitelist =
+        new WhitelistSandbox(
+            new FileSandboxProperties(List.of(directory.toString())),
+            new ShellSandboxProperties(List.of()),
+            new HttpSandboxProperties(List.of()));
+    FileTools guarded = new FileTools(whitelist);
+    Path outside = Files.createTempFile("oryxos-outside", ".txt");
+    Path missing = directory.resolve("..").resolve("must-not-exist.txt").normalize();
+    try {
+      assertThrows(SandboxViolationException.class, () -> guarded.readFile(outside.toString()));
+      assertThrows(
+          SandboxViolationException.class, () -> guarded.writeFile(outside.toString(), "x"));
+      assertEquals("", Files.readString(outside));
+      assertThrows(
+          SandboxViolationException.class, () -> guarded.writeFile(missing.toString(), "x"));
+      assertFalse(Files.exists(missing));
+    } finally {
+      Files.deleteIfExists(outside);
+    }
   }
 }

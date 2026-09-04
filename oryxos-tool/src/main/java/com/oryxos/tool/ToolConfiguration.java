@@ -8,8 +8,11 @@ import com.oryxos.tool.builtin.NotifyTools;
 import com.oryxos.tool.builtin.ShellTools;
 import com.oryxos.tool.mcp.McpClientService;
 import com.oryxos.tool.notify.WebhookNotifyAdapter;
-import com.oryxos.tool.sandbox.HttpWhitelistSandbox;
+import com.oryxos.tool.sandbox.FileSandboxProperties;
+import com.oryxos.tool.sandbox.HttpSandboxProperties;
 import com.oryxos.tool.sandbox.Sandbox;
+import com.oryxos.tool.sandbox.ShellSandboxProperties;
+import com.oryxos.tool.sandbox.WhitelistSandbox;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -20,12 +23,10 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.boot.context.properties.bind.Bindable;
-import org.springframework.boot.context.properties.bind.Binder;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.MethodIntrospector;
 import org.springframework.core.annotation.AnnotatedElementUtils;
-import org.springframework.core.env.Environment;
 import org.springframework.web.client.RestClient;
 
 /**
@@ -34,6 +35,11 @@ import org.springframework.web.client.RestClient;
  * @author OryxOS Contributors
  */
 @AutoConfiguration
+@EnableConfigurationProperties({
+  FileSandboxProperties.class,
+  ShellSandboxProperties.class,
+  HttpSandboxProperties.class
+})
 class ToolConfiguration {
 
   @Bean
@@ -48,12 +54,11 @@ class ToolConfiguration {
 
   @Bean
   @ConditionalOnMissingBean(Sandbox.class)
-  Sandbox sandbox(Environment environment) {
-    List<String> allowedDomains =
-        Binder.get(environment)
-            .bind("http.allowed-domains", Bindable.listOf(String.class))
-            .orElseGet(List::of);
-    return new HttpWhitelistSandbox(allowedDomains);
+  Sandbox sandbox(
+      FileSandboxProperties fileProps,
+      ShellSandboxProperties shellProps,
+      HttpSandboxProperties httpProps) {
+    return new WhitelistSandbox(fileProps, shellProps, httpProps);
   }
 
   @Bean

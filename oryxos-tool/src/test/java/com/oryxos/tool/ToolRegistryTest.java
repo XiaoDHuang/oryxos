@@ -111,9 +111,9 @@ class ToolRegistryTest {
     ToolRegistry registry = new ToolRegistry();
     registry.registerAnnotated(new OryxToolContractTest.ContractPlugin());
     assertTrue(registry.contains("contractEcho"));
-    assertThrows(
-        SandboxViolationException.class,
-        () -> registry.asMap().get("contractEcho").execute("{\"value\":\"x\"}"));
+    var denied = registry.asMap().get("contractEcho").execute("{\"value\":\"x\"}");
+    assertFalse(denied.success());
+    assertFalse(denied.retryable());
   }
 
   static OryxTool stub(String name, String description, String schema) {
@@ -171,6 +171,7 @@ class ToolRegistryTest {
                   new AssistantMessage.ToolCall(
                       "c", "function", "read_file", "{\"path\":\"unavailable\"}"));
       assertFalse(result.success());
+      assertEquals("拒绝文件操作", result.errorMessage());
       verify(audit)
           .record(
               eq("s"),
@@ -179,7 +180,7 @@ class ToolRegistryTest {
               anyString(),
               eq(false),
               isNull(),
-              anyString(),
+              eq("拒绝文件操作"),
               anyLong());
       verifyNoMoreInteractions(audit);
     } finally {

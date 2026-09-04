@@ -16,9 +16,13 @@ import com.oryxos.core.react.ProfileContext;
 import com.oryxos.tool.notify.NotifyChannelAdapter;
 import com.oryxos.tool.notify.NotifyTarget;
 import com.oryxos.tool.sandbox.ActionType;
+import com.oryxos.tool.sandbox.FileSandboxProperties;
+import com.oryxos.tool.sandbox.HttpSandboxProperties;
 import com.oryxos.tool.sandbox.Sandbox;
 import com.oryxos.tool.sandbox.SandboxAction;
 import com.oryxos.tool.sandbox.SandboxViolationException;
+import com.oryxos.tool.sandbox.ShellSandboxProperties;
+import com.oryxos.tool.sandbox.WhitelistSandbox;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
@@ -97,6 +101,20 @@ class NotifyToolsTest {
     profile(List.of(target("http://localhost/x")));
     doThrow(new SandboxViolationException("禁止通知")).when(sandbox).enforce(any());
     assertThrows(SandboxViolationException.class, () -> tools.notify("内容", null));
+    verifyNoInteractions(adapter);
+  }
+
+  @Test
+  @DisplayName("真实白名单外webhook被拦且渠道零发送")
+  void whitelistDeniesWebhookWithoutSending() {
+    WhitelistSandbox whitelist =
+        new WhitelistSandbox(
+            new FileSandboxProperties(List.of()),
+            new ShellSandboxProperties(List.of()),
+            new HttpSandboxProperties(List.of("api.example.com")));
+    NotifyTools guarded = new NotifyTools(whitelist, adapter);
+    profile(List.of(target("http://localhost/webhook")));
+    assertThrows(SandboxViolationException.class, () -> guarded.notify("内容", null));
     verifyNoInteractions(adapter);
   }
 

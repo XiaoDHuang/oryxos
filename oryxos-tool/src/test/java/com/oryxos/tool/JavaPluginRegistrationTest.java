@@ -2,7 +2,7 @@ package com.oryxos.tool;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -15,7 +15,6 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import com.oryxos.core.react.ProfileContext;
 import com.oryxos.core.react.ToolExecutor;
 import com.oryxos.core.react.ToolInvocationAudit;
-import com.oryxos.tool.sandbox.SandboxViolationException;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.DisplayName;
@@ -39,9 +38,10 @@ class JavaPluginRegistrationTest {
               var registry = context.getBean(ToolRegistry.class);
               assertTrue(registry.contains("plugin_echo"));
               assertTrue(registry.contains("proxy_echo"));
-              assertThrows(
-                  SandboxViolationException.class,
-                  () -> registry.asMap().get("plugin_echo").execute("{\"text\":\"x\"}"));
+              var denied = registry.asMap().get("plugin_echo").execute("{\"text\":\"x\"}");
+              assertFalse(denied.success());
+              assertFalse(denied.retryable());
+              assertTrue(denied.errorMessage().contains("执行许可"));
               assertEquals(0, context.getBean(Plugin.class).calls.get());
             });
   }

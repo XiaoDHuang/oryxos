@@ -47,6 +47,24 @@ provider:
 export DEEPSEEK_API_KEY=your_api_key
 ```
 
+## 2.1 配置 Sandbox 白名单
+
+内置工具（`read_file`/`write_file`/`list_dir`/`shell`/`http_get`/`http_post`/`notify`）在执行任何真实 IO 前必须通过白名单校验，配置位于 `application.yaml`：
+
+```yaml
+file:
+  allowed_paths:      # 允许读写的路径根，按目录边界比较（子路径放行，形如 /workspace-evil 的兄弟路径不放行）
+    - .oryxos
+shell:
+  allowed_commands:   # 允许的命令首 token（大小写敏感，精确比对）
+    - ls
+http:
+  allowed_domains:    # 允许精确匹配的域名/IP（不支持通配符；非法项启动即失败）
+    - api.openweathermap.org
+```
+
+注意：**任一白名单置空或缺省 = 该类动作全部拒绝，而非不校验**。这是默认安全的刻意设计——新部署未显式放行前，文件、命令与 HTTP 请求都不会离开边界。
+
 ## 3. 启动对话
 
 ```bash

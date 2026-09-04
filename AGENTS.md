@@ -5,7 +5,7 @@
 跨工具目录与 Skills 说明见 [`.agents/README.md`](.agents/README.md)。
 ## 项目现状
 
-Maven 9 模块与 Provider、ReAct、CLI/Session、Notify、Tool 已有实现，006 文件式 Memory 已在 `3d60ee0` 归档。007 Memory 三后端已于 2026-09-04 归档（`d040713`，85/85，R1–R5 全通过）：Markdown 默认兼容、SQLite 本地后端、显式可选的自托管 Mem0（受控 Python 适配器 + 独立 PG/pgvector，默认关闭）；实际任务与证据见 `specs/007-memory-backends/tasks.md`、`acceptance.md`，不能把本地后端绿灯当作 007 完成。9 模块仍是默认基线；任何模块新增、删除、改名或职责迁移必须先写入 feature plan、获得用户显式批准，并同步本文件与 `docs/TechnicalSolution.md` 后才能实施。
+Maven 9 模块与 Provider、ReAct、CLI/Session、Notify、Tool 已有实现，006 文件式 Memory 已在 `3d60ee0` 归档。007 Memory 三后端已于 2026-09-04 归档（`d040713`，85/85，R1–R5 全通过）：Markdown 默认兼容、SQLite 本地后端、显式可选的自托管 Mem0（受控 Python 适配器 + 独立 PG/pgvector，默认关闭）；实际任务与证据见 `specs/007-memory-backends/tasks.md`、`acceptance.md`，不能把本地后端绿灯当作 007 完成。008（第 24 节）Sandbox 白名单实现已随 `024-lesson24-sandbox` 分支交付：`WhitelistSandbox` 三类全路由（文件路径目录边界、Shell 首 token、HTTP 精确域名委托 007 既有实现），空名单=全拒绝，Sandbox 拒绝原因经 `AnnotatedToolAdapter` 转为不可重试失败进 `tool_invocations` 并回填模型；证据见 `specs/008-sandbox-whitelist/`。9 模块仍是默认基线；任何模块新增、删除、改名或职责迁移必须先写入 feature plan、获得用户显式批准，并同步本文件与 `docs/TechnicalSolution.md` 后才能实施。
 
 ## 一句话理解 OryxOS
 
@@ -139,7 +139,7 @@ Provider、Memory、Tool 三个能力供养 ReAct 循环这个引擎，引擎跑
 - 核心全量、不参与归档检索；Markdown 注入归档最近 4000 Java char，SQLite 最近 100 条。二者检索全量归档关键词；Mem0 允许语义检索，但分页、窗口、scope 和核心完整性必须验证，不能混用三后端断言。
 - 保留 006 `LongTermMemory` 的既有行为及回归断言；裁剪只影响注入，不删原始历史；保存成功后下一轮可见，远端异步处理必须有界等待或失败，不以最终一致静默放宽契约。
 - Mem0 默认关闭，仅自托管且完整数据路径（服务、模型、embedding、存储）和审计来源验证后可启用。每次涉外 I/O 前校验允许目标，缺安全接线拒绝；凭证用环境变量，不设默认云地址。
-- 现有 `tool → memory → core/storage`，memory 不得依赖 tool 中的 Sandbox。用户已批准 007 的 `MemoryOutboundGuard`（memory）、`HttpWhitelistSandbox`（tool）及 boot 组合接线；仅 HTTP 白名单提前实现，其余动作仍拒绝，不可用空检查绕过。
+- 现有 `tool → memory → core/storage`，memory 不得依赖 tool 中的 Sandbox。用户已批准 007 的 `MemoryOutboundGuard`（memory）、`HttpWhitelistSandbox`（tool）及 boot 组合接线，不可用空检查绕过；008 已在 HTTP 白名单之上交付 `WhitelistSandbox` 三类全路由（`file.allowed_paths`/`shell.allowed_commands`/`http.allowed_domains`，空=全拒绝），HTTP_REQUEST 仍委托 007 精确匹配实现，007 接线语义不变。
 - 不新增 OryxOS 自动保存触发器。007 clarify 已获用户批准：Mem0 在显式保存归档时自动提炼、合并和替换，原始输入与被合并/替换旧归档持久保留且可追溯；常规召回/自动归档注入只读当前有效条目，不读历史副本。保存成功须同时满足有效状态可读和历史保全；核心与本地后端原文规则不变。历史落位、失败恢复及数据/审计路径仍须在 plan 核验；Mem0 内部 LLM 调用不能假称已进 OryxOS `llm_calls`。
 - 006 原规格保留为历史基线；007 共同测试须经过真实适配器，远端可替换传输不可替换成假 Store。范围记录见 `docs/decisions/007-memory-backends-scope.md`，未完成 plan 核验不得实现 Mem0。
 
