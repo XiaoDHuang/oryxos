@@ -4,13 +4,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.oryxos.core.context.ContextLoader;
 import com.oryxos.core.memory.MemoryService;
 import com.oryxos.core.profile.Profile;
+import com.oryxos.core.profile.ProfileRegistry;
+import com.oryxos.core.profile.ScheduleConfig;
+import com.oryxos.core.react.AgentService;
 import com.oryxos.core.react.PromptBuilder;
 import com.oryxos.core.session.Session;
+import com.oryxos.core.session.SessionManager;
 import com.oryxos.core.tool.OryxTool;
 import java.lang.reflect.Method;
 import java.nio.file.Path;
@@ -24,6 +29,9 @@ import org.junit.jupiter.api.io.TempDir;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.scheduling.Trigger;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.test.util.ReflectionTestUtils;
 
 @DisplayName("核心引擎Memory端口装配")
@@ -93,6 +101,55 @@ class CoreEngineConfigurationTest {
               return value == null ? fallback.get() : value;
             });
     return provider;
+  }
+
+  @Test
+  @DisplayName("调度器工厂方法被装配时注册全部定时规则")
+  void registersSchedulesOnFactoryCall() {
+    ThreadPoolTaskScheduler taskScheduler = mock(ThreadPoolTaskScheduler.class);
+    ProfileRegistry registry = new ProfileRegistry(List.of(profileWithSchedule()));
+
+    new CoreEngineConfiguration()
+        .agentScheduler(
+            taskScheduler, registry, mock(AgentService.class), mock(SessionManager.class));
+
+    verify(taskScheduler).schedule(any(Runnable.class), any(Trigger.class));
+  }
+
+  @Test
+  @DisplayName("调度器Bean按启用信号条件装配_缺省不生成(chat等交互命令注册数为零)")
+  void agentSchedulerBeanIsConditionalOnResidentModeFlag() throws Exception {
+    Method factory =
+        CoreEngineConfiguration.class.getMethod(
+            "agentScheduler",
+            ThreadPoolTaskScheduler.class,
+            ProfileRegistry.class,
+            AgentService.class,
+            SessionManager.class);
+
+    ConditionalOnProperty condition = factory.getAnnotation(ConditionalOnProperty.class);
+    assertThat(condition).isNotNull();
+    assertThat(condition.prefix()).isEqualTo("oryxos.scheduler");
+    assertThat(condition.name()).containsExactly("enabled");
+    assertThat(condition.havingValue()).isEqualTo("true");
+  }
+
+  private static Profile profileWithSchedule() {
+    return new Profile(
+        "p",
+        null,
+        null,
+        null,
+        List.of(),
+        null,
+        null,
+        null,
+        null,
+        List.of(new ScheduleConfig("morning-report", "0 0 9 * * *", "Asia/Shanghai", "日报")),
+        List.of(),
+        new Profile.Settings(10, 20),
+        null,
+        null);
   }
 
   private static Profile profile() {

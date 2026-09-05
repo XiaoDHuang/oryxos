@@ -42,8 +42,10 @@ class ProfileLoaderTest {
           - type: webhook
             url: "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=demo"
         schedules:
-          - name: morning-report
-            cron: "0 9 * * *"
+          - id: morning-report
+            cron: "0 0 9 * * *"
+            zone: "Asia/Shanghai"
+            message: "生成昨日运维日报"
         bootstrap: [AGENTS.md, SOUL.md]
         settings:
           max_iterations: 5
@@ -71,7 +73,10 @@ class ProfileLoaderTest {
     assertThat(profile.notifyChannels().get(0)).containsEntry("type", "webhook");
     assertThat(profile.notifyChannels().get(0)).containsKey("url");
     assertThat(profile.schedules()).hasSize(1);
-    assertThat(profile.schedules().get(0)).containsEntry("name", "morning-report");
+    assertThat(profile.schedules().get(0).id()).isEqualTo("morning-report");
+    assertThat(profile.schedules().get(0).cron()).isEqualTo("0 0 9 * * *");
+    assertThat(profile.schedules().get(0).zone()).isEqualTo("Asia/Shanghai");
+    assertThat(profile.schedules().get(0).message()).isEqualTo("生成昨日运维日报");
     assertThat(profile.bootstrap()).containsExactly("AGENTS.md", "SOUL.md");
     assertThat(profile.settings().maxIterations()).isEqualTo(5);
     assertThat(profile.settings().maxHistoryTurns()).isEqualTo(30);

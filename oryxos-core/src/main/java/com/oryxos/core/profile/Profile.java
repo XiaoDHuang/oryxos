@@ -21,7 +21,7 @@ public record Profile(
     List<String> mcpServers,
     List<String> channels,
     List<Map<String, Object>> notifyChannels,
-    List<Map<String, Object>> schedules,
+    List<ScheduleConfig> schedules,
     List<String> bootstrap,
     Settings settings,
     String createdAt,

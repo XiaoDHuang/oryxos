@@ -67,4 +67,24 @@
         <cpe regex="true">cpe:2\.3:a:.*:spring_framework:6\.2\..*</cpe>
         <cve>CVE-2026-59282</cve>
     </suppress>
+    <!-- 009（第 25 节）复核（2026-09-05）：spring-ai-model 1.1.8 的两条告警在 OryxOS 均不可达。
+         Spring AI 修复线在 2.0.0，1.1.x 无修复版本；升级 2.0.0 属平台级决策，不在本 feature 范围。逐条依据： -->
+    <suppress>
+        <notes><![CDATA[
+          CVE-2026-47851（PDF 深层嵌套/循环目录致 StackOverflowError）：受影响代码在 Spring AI 文档读取
+          （PDF/Tika ingestion）路径。OryxOS 全仓无 PdfDocumentReader/DocumentReader/Tika 调用点，
+          reactor 仅含 spring-ai-commons/model/template-st 三个 artifact，无 reader 模块——不可达。
+        ]]></notes>
+        <cpe regex="true">cpe:2\.3:a:vmware:spring_ai:1\.1\..*</cpe>
+        <cve>CVE-2026-47851</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+          CVE-2026-47852（多用户主机预建确定性缓存路径植入恶意 ONNX 模型）：受影响代码在
+          spring-ai-transformers 本地 ONNX embedding。OryxOS 无该 artifact（reactor 仅 commons/model/
+          template-st），全仓无 onnx/transformers/EmbeddingModel 调用点（核心阶段不自建向量索引）——不可达。
+        ]]></notes>
+        <cpe regex="true">cpe:2\.3:a:vmware:spring_ai:1\.1\..*</cpe>
+        <cve>CVE-2026-47852</cve>
+    </suppress>
 </suppressions>

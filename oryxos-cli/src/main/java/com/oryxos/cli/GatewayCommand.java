@@ -20,7 +20,8 @@ public class GatewayCommand implements Runnable {
   public void run() {
     PrintWriter out = commandSpec.commandLine().getOut();
     out.println("gateway 守护进程已启动(核心阶段仅 CLI 通道,IM 通道在扩展阶段接入)。Ctrl+C 退出。");
-    SpringRuntime.start(false);
+    // 常驻模式才挂定时任务(§8.6):启用信号随启动参数进入 Environment,chat 不传故注册数为零
+    SpringRuntime.start(false, "--oryxos.scheduler.enabled=true");
     try {
       // 守护:非 Web 模式没有容器线程常驻,主线程在此驻留直到进程被终止。
       new CountDownLatch(1).await();

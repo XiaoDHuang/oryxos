@@ -27,7 +27,8 @@ public class ServeCommand implements Runnable {
   public void run() {
     PrintWriter out = commandSpec.commandLine().getOut();
     out.println("Web Service 启动中,端口 " + port + "(REST 业务端点在后续课程交付,当前可用 /actuator/*)...");
-    SpringRuntime.start(true, "--server.port=" + port);
+    // 常驻模式才挂定时任务(§8.6):启用信号随启动参数进入 Environment,chat 不传故注册数为零
+    SpringRuntime.start(true, "--server.port=" + port, "--oryxos.scheduler.enabled=true");
     try {
       // 常驻:命令一旦返回,OryxOsCli.main 就会 System.exit 杀掉容器——主线程在此驻留,
       // 收尾交给 Spring 的 shutdown hook(SIGINT/SIGTERM 时优雅关容器)。

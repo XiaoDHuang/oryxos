@@ -2,6 +2,7 @@ package com.oryxos.core.profile;
 
 import java.util.Collection;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -26,5 +27,10 @@ public class ProfileRegistry {
   /** 按名称查找 profile. */
   public Optional<Profile> find(String name) {
     return Optional.ofNullable(profiles.get(name));
+  }
+
+  /** 枚举全部已注册 profile(不可变视图). 为 25 节 AgentScheduler.registerAll 的启动扫描而设. */
+  public Collection<Profile> all() {
+    return List.copyOf(profiles.values());
   }
 }
