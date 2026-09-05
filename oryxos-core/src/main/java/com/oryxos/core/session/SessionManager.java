@@ -35,4 +35,21 @@ public interface SessionManager {
    * @param session 待保存的会话
    */
   void save(Session session);
+
+  /**
+   * 归档会话:置 status=archived 并写归档时间. 已归档再调幂等返回 true(不覆写归档时间); 归档只是关闭写入,历史仍可读。
+   *
+   * @param sessionId 会话标识
+   * @return 会话存在(含已归档)为 true,不存在为 false
+   */
+  boolean archive(String sessionId);
+
+  /**
+   * 按最后活跃倒序分页列出会话摘要,含归档会话.
+   *
+   * @param page 页码,从 0 开始,负数抛 IllegalArgumentException
+   * @param size 每页条数,小于 1 抛 IllegalArgumentException,超过 100 收敛为 100
+   * @return 一页摘要与全量条数
+   */
+  SessionPage listSessions(int page, int size);
 }

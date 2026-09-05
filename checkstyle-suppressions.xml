@@ -5,4 +5,6 @@
 <suppressions>
   <!-- Courseware-mandated harness class name; the 'IT' suffix marks surefire-excluded smoke tests. -->
   <suppress checks="AbbreviationAsWordInName" files="ProviderSmokeIT\.java"/>
+  <!-- Courseware-mandated harness class name(26 节);本类无外部依赖、默认组执行,IT 仅为课件既定字面量。 -->
+  <suppress checks="AbbreviationAsWordInName" files="WebSmokeIT\.java"/>
 </suppressions>

@@ -21,10 +21,22 @@ public class Session {
 
   private final List<Message> messages = new ArrayList<>();
 
+  private boolean archived;
+
   /** 创建绑定到给定 profile 的会话. */
   public Session(String id, String profileName) {
     this.id = id;
     this.profileName = profileName;
+  }
+
+  /** 返回该会话是否已归档(由持久层回读时填充;新建会话恒为 false). */
+  public boolean archived() {
+    return archived;
+  }
+
+  /** 持久层回读时按实体状态填充归档标记;不开放给业务代码调用. */
+  public void fillArchived(boolean archived) {
+    this.archived = archived;
   }
 
   /** 把用户的消息追加进历史. */

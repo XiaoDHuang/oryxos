@@ -100,6 +100,12 @@ public class SessionEntity {
     this.lastActiveAt = newLastActiveAt;
   }
 
+  /** 置归档状态与归档时间;仅在未归档时调用(幂等判断归 SessionManager). */
+  public void markArchived(String newArchivedAt) {
+    this.status = "archived";
+    this.archivedAt = newArchivedAt;
+  }
+
   public String getContextState() {
     return contextState;
   }

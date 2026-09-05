@@ -3,6 +3,7 @@ package com.oryxos.storage.session;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.oryxos.core.session.Session;
+import com.oryxos.core.session.SessionPage;
 import java.sql.Connection;
 import java.util.UUID;
 import javax.sql.DataSource;
@@ -112,5 +113,78 @@ class SessionManagerTest {
     assertThat(reloaded.messages()).hasSize(2);
     assertThat(reloaded.messages().get(0).getText()).isEqualTo("第一句话");
     assertThat(reloaded.messages().get(1).getText()).isEqualTo("第二句话");
+  }
+
+  @Test
+  @DisplayName("归档后状态置位_回读带归档标记")
+  void archive_marksStatusAndReloadCarriesFlag() {
+    Session session = sessionManager.getOrCreate("web", "wang", "default");
+    assertThat(session.archived()).isFalse();
+
+    assertThat(sessionManager.archive(session.id())).isTrue();
+
+    SessionEntity entity = repository.findById(session.id()).orElseThrow();
+    assertThat(entity.getStatus()).isEqualTo("archived");
+    assertThat(entity.getArchivedAt()).isNotBlank();
+    assertThat(sessionManager.get(session.id()).orElseThrow().archived()).isTrue();
+  }
+
+  @Test
+  @DisplayName("重复归档幂等_不覆写归档时间")
+  void archiveTwice_idempotentKeepsFirstTimestamp() {
+    Session session = sessionManager.getOrCreate("cli", "li", "default");
+    assertThat(sessionManager.archive(session.id())).isTrue();
+    String firstArchivedAt = repository.findById(session.id()).orElseThrow().getArchivedAt();
+
+    assertThat(sessionManager.archive(session.id())).isTrue();
+
+    assertThat(repository.findById(session.id()).orElseThrow().getArchivedAt())
+        .isEqualTo(firstArchivedAt);
+  }
+
+  @Test
+  @DisplayName("归档未知会话_返回false")
+  void archiveUnknown_returnsFalse() {
+    assertThat(sessionManager.archive("web:ghost:default")).isFalse();
+  }
+
+  @Test
+  @DisplayName("列表按最后活跃倒序分页_含归档与全量条数")
+  void listSessions_descByLastActiveWithTotal() {
+    Session older = sessionManager.getOrCreate("cli", "a", "default");
+    sessionManager.getOrCreate("cli", "b", "default");
+    sessionManager.getOrCreate("cli", "c", "default");
+    sessionManager.archive(older.id());
+    // 推新最老那条的活跃时间,制造确定的倒序首尾
+    sessionManager.save(older);
+
+    SessionPage first = sessionManager.listSessions(0, 2);
+
+    assertThat(first.total()).isEqualTo(3);
+    assertThat(first.content()).hasSize(2);
+    assertThat(first.content().getFirst().sessionId()).isEqualTo(older.id());
+    assertThat(sessionManager.listSessions(1, 2).content()).hasSize(1);
+    assertThat(sessionManager.listSessions(0, 500).size()).isEqualTo(100);
+    // id 格式由 idComposedOnlyInsideManager 钉死,此处直接引用字面量
+    assertThat(
+            sessionManager.listSessions(0, 10).content().stream()
+                .anyMatch(summary -> summary.sessionId().equals("cli:c:default")))
+        .isTrue();
+    assertThat(
+            sessionManager.listSessions(0, 10).content().stream()
+                .filter(summary -> summary.sessionId().equals(older.id()))
+                .findFirst()
+                .orElseThrow()
+                .status())
+        .isEqualTo("archived");
+  }
+
+  @Test
+  @DisplayName("非法分页参数_直接拒绝")
+  void listSessions_invalidPageArgs_rejected() {
+    org.assertj.core.api.Assertions.assertThatThrownBy(() -> sessionManager.listSessions(-1, 10))
+        .isInstanceOf(IllegalArgumentException.class);
+    org.assertj.core.api.Assertions.assertThatThrownBy(() -> sessionManager.listSessions(0, 0))
+        .isInstanceOf(IllegalArgumentException.class);
   }
 }

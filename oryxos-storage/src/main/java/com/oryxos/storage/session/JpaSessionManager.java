@@ -4,6 +4,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.oryxos.core.session.Session;
 import com.oryxos.core.session.SessionManager;
+import com.oryxos.core.session.SessionPage;
+import com.oryxos.core.session.SessionSummary;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -16,6 +18,8 @@ import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.ToolResponseMessage;
 import org.springframework.ai.chat.messages.UserMessage;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 
 /**
@@ -60,6 +64,44 @@ public class JpaSessionManager implements SessionManager {
     return repository.findById(sessionId).map(this::toRuntime);
   }
 
+  /** 归档置位:已归档幂等不再覆写归档时间,未知会话返回 false. */
+  @Override
+  public boolean archive(String sessionId) {
+    Optional<SessionEntity> existing = repository.findById(sessionId);
+    if (existing.isEmpty()) {
+      return false;
+    }
+    SessionEntity entity = existing.get();
+    if (STATUS_ARCHIVED.equals(entity.getStatus())) {
+      return true;
+    }
+    entity.markArchived(Instant.now().toString());
+    repository.save(entity);
+    LOGGER.info("归档会话 {}", sanitize(sessionId));
+    return true;
+  }
+
+  /** 按最后活跃倒序分页;页容量超过 100 收敛为 100,防一次拖全表. */
+  @Override
+  public SessionPage listSessions(int page, int size) {
+    if (page < 0) {
+      throw new IllegalArgumentException("页码不能为负数: " + page);
+    }
+    if (size < 1) {
+      throw new IllegalArgumentException("每页条数不能小于 1: " + size);
+    }
+    int effectiveSize = Math.min(size, MAX_PAGE_SIZE);
+    var result =
+        repository.findAll(
+            PageRequest.of(page, effectiveSize, Sort.by(Sort.Direction.DESC, "lastActiveAt")));
+    return new SessionPage(
+        page, effectiveSize, result.getTotalElements(), result.map(toSummary()).toList());
+  }
+
+  private static final String STATUS_ARCHIVED = "archived";
+
+  private static final int MAX_PAGE_SIZE = 100;
+
   /** 持久化累积的消息历史(整列覆盖),并刷新最后活跃时间. */
   @Override
   public void save(Session session) {
@@ -102,10 +144,24 @@ public class JpaSessionManager implements SessionManager {
 
   private Session toRuntime(SessionEntity entity) {
     Session session = new Session(entity.getSessionId(), entity.getProfileName());
+    session.fillArchived(STATUS_ARCHIVED.equals(entity.getStatus()));
     for (Message message : deserialize(entity.getMessagesJson())) {
       appendByRole(session, message);
     }
     return session;
+  }
+
+  private static java.util.function.Function<SessionEntity, SessionSummary> toSummary() {
+    return entity ->
+        new SessionSummary(
+            entity.getSessionId(),
+            entity.getProfileName(),
+            entity.getChannel(),
+            entity.getUserId(),
+            entity.getStatus(),
+            entity.getCreatedAt(),
+            entity.getLastActiveAt(),
+            entity.getArchivedAt());
   }
 
   private static void appendByRole(Session session, Message message) {

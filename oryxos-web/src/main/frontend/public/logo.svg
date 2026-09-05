@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 200" width="920" height="200">
+  <defs>
+    <linearGradient id="orangeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fb923c"/>
+      <stop offset="50%" stop-color="#f97316"/>
+      <stop offset="100%" stop-color="#ea580c"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Black rounded background -->
+  <rect width="920" height="200" fill="#0a0a0a" rx="16"/>
+
+  <!-- Icon: Layered architecture -->
+  <g transform="translate(50, 25)">
+    <!-- Layered hexagons - OS layers -->
+    <!-- Bottom layer -->
+    <path d="M60 75 L90 92 L90 110 L60 127 L30 110 L30 92 Z" fill="none" stroke="#404040" stroke-width="2"/>
+    <!-- Middle layer -->
+    <path d="M60 45 L95 66 L95 85 L60 106 L25 85 L25 66 Z" fill="none" stroke="url(#orangeGrad)" stroke-width="2.5"/>
+    <!-- Top layer -->
+    <path d="M60 15 L100 40 L100 60 L60 85 L20 60 L20 40 Z" fill="none" stroke="#ffffff" stroke-width="2"/>
+
+    <!-- Central core -->
+    <circle cx="60" cy="52" r="10" fill="url(#orangeGrad)"/>
+    <circle cx="60" cy="52" r="5" fill="#0a0a0a"/>
+
+    <!-- Connection dots -->
+    <circle cx="60" cy="24" r="3.5" fill="#ffffff"/>
+    <circle cx="60" cy="75" r="3.5" fill="url(#orangeGrad)"/>
+    <circle cx="60" cy="95" r="3.5" fill="#404040"/>
+  </g>
+
+  <!-- Wordmark -->
+  <g transform="translate(200, 50)">
+    <text x="0" y="85" font-family="'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="90" font-weight="800" fill="#ffffff" letter-spacing="-2">Oryx</text>
+    <text x="238" y="85" font-family="'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="90" font-weight="800" fill="url(#orangeGrad)" letter-spacing="-2">OS</text>
+    <text x="4" y="118" font-family="'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="16" font-weight="500" fill="#737373" letter-spacing="1">Enterprise Agent OS</text>
+  </g>
+</svg>

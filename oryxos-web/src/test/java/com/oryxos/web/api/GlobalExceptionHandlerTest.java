@@ -2,11 +2,15 @@ package com.oryxos.web.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.oryxos.provider.ProviderNotFoundException;
 import org.junit.jupiter.api.Test;
+import org.springframework.ai.openai.api.common.OpenAiApiClientErrorException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.client.ResourceAccessException;
+import org.springframework.web.context.request.async.AsyncRequestTimeoutException;
 
 class GlobalExceptionHandlerTest {
 
@@ -57,5 +61,57 @@ class GlobalExceptionHandlerTest {
         .isNotNull()
         .extracting(ApiErrorResponse::getErrorCode, ApiErrorResponse::getMessage)
         .containsExactly("INTERNAL_ERROR", "服务器内部错误");
+  }
+
+  @Test
+  void mapsIllegalArgumentToBadRequest() {
+    ResponseEntity<ApiErrorResponse> response =
+        handler.handleIllegalArgument(new IllegalArgumentException("消息为空或超过 32KB"));
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(response.getBody())
+        .isNotNull()
+        .extracting(ApiErrorResponse::getErrorCode, ApiErrorResponse::getMessage)
+        .containsExactly("INVALID_REQUEST", "消息为空或超过 32KB");
+  }
+
+  @Test
+  void mapsProviderNotFoundToServiceUnavailable() {
+    ResponseEntity<ApiErrorResponse> response =
+        handler.handleProviderNotFound(new ProviderNotFoundException("deepseek"));
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+    assertThat(response.getBody())
+        .isNotNull()
+        .extracting(ApiErrorResponse::getErrorCode, ApiErrorResponse::getMessage)
+        .containsExactly("PROVIDER_UNAVAILABLE", "Provider 未注册: deepseek");
+  }
+
+  @Test
+  void mapsProviderCallFailureToServiceUnavailableWithoutDetails() {
+    ResponseEntity<ApiErrorResponse> network =
+        handler.handleProviderCallFailure(new ResourceAccessException("Connection refused"));
+    ResponseEntity<ApiErrorResponse> apiError =
+        handler.handleProviderCallFailure(new OpenAiApiClientErrorException("401 invalid key"));
+
+    for (ResponseEntity<ApiErrorResponse> response : new ResponseEntity[] {network, apiError}) {
+      assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+      assertThat(response.getBody())
+          .isNotNull()
+          .extracting(ApiErrorResponse::getErrorCode, ApiErrorResponse::getMessage)
+          .containsExactly("PROVIDER_UNAVAILABLE", "Provider 不可用");
+    }
+  }
+
+  @Test
+  void mapsAsyncTimeoutToGatewayTimeout() {
+    ResponseEntity<ApiErrorResponse> response =
+        handler.handleAgentTimeout(new AsyncRequestTimeoutException());
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.GATEWAY_TIMEOUT);
+    assertThat(response.getBody())
+        .isNotNull()
+        .extracting(ApiErrorResponse::getErrorCode, ApiErrorResponse::getMessage)
+        .containsExactly("AGENT_TIMEOUT", "Agent 调用超时");
   }
 }

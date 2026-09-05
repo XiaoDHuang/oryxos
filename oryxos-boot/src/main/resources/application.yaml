@@ -19,6 +19,10 @@ spring:
   threads:
     virtual:
       enabled: true
+  mvc:
+    async:
+      # Agent 调用最长 60 秒,超时由 GlobalExceptionHandler 映射 504
+      request-timeout: 60000
   lifecycle:
     timeout-per-shutdown-phase: 30s
   jackson:
