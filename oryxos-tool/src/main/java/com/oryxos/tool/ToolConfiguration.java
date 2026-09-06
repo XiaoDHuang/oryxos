@@ -52,9 +52,10 @@ class ToolConfiguration {
     return new ToolRegistry(validator);
   }
 
+  /** 返回类型收窄到具体类:除 Sandbox 端口注入外,管理端点需要按具体类取用运行时增删方法. */
   @Bean
   @ConditionalOnMissingBean(Sandbox.class)
-  Sandbox sandbox(
+  WhitelistSandbox sandbox(
       FileSandboxProperties fileProps,
       ShellSandboxProperties shellProps,
       HttpSandboxProperties httpProps) {

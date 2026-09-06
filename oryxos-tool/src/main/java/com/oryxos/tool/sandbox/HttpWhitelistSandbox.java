@@ -7,14 +7,16 @@ import java.net.InetAddress;
 import java.net.URI;
 import java.net.UnknownHostException;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.regex.Pattern;
 
 /**
- * 只开放显式HTTP目标，其他动作继续沿用核心阶段的默认拒绝.
+ * 只开放显式HTTP目标，其他动作继续沿用核心阶段的默认拒绝. 域名集合启动期载入后支持运行期 增删(并发结构,内存覆盖语义);enforce 的严格规范化与查重规则不变。
  *
  * @author OryxOS Contributors
  */
@@ -38,6 +40,7 @@ public final class HttpWhitelistSandbox implements Sandbox {
   private static final Pattern DNS_LABEL =
       Pattern.compile("[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?", Pattern.CASE_INSENSITIVE);
   private final Set<String> allowedHosts;
+  private final Map<String, String> displayByKey;
 
   /** 坏项或规范化后重复会拒绝整份配置，避免最后一项覆盖安全策略. */
   public HttpWhitelistSandbox(Collection<String> allowedDomains) {
@@ -45,16 +48,60 @@ public final class HttpWhitelistSandbox implements Sandbox {
       throw invalidConfiguration();
     }
     Set<String> normalized = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+    Map<String, String> display = new ConcurrentHashMap<>();
     try {
       for (String domain : allowedDomains) {
-        if (!normalized.add(normalizeHost(domain))) {
+        String key = normalizeHost(domain);
+        if (!normalized.add(key)) {
           throw invalidConfiguration();
         }
+        display.put(key, domain);
       }
     } catch (IllegalArgumentException exception) {
       throw invalidConfiguration();
     }
-    allowedHosts = Collections.unmodifiableSet(normalized);
+    // 运行期可增删:并发跳表,读(enforce)写(管理端点)互不阻塞;enforce 用规范化键,视图用原始文本.
+    // 比较器必须与启动期 TreeSet 同为 CASE_INSENSITIVE_ORDER,否则大小写规范化语义被破坏
+    allowedHosts = new ConcurrentSkipListSet<>(String.CASE_INSENSITIVE_ORDER);
+    allowedHosts.addAll(normalized);
+    displayByKey = display;
+  }
+
+  /** 返回生效域名视图(管理员可读的原始条目快照,排序稳定). */
+  public Set<String> allowedHostView() {
+    Set<String> view = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+    view.addAll(displayByKey.values());
+    return java.util.Collections.unmodifiableSet(view);
+  }
+
+  /** 运行期新增域名;规范化与启动期同规则,坏项抛 IllegalArgumentException,已存在返回 false. */
+  public boolean allowDomain(String domain) {
+    String key;
+    try {
+      key = normalizeHost(domain);
+    } catch (IllegalArgumentException exception) {
+      throw new IllegalArgumentException("HTTP允许域名项无效: " + domain, exception);
+    }
+    boolean added = allowedHosts.add(key);
+    if (added) {
+      displayByKey.put(key, domain);
+    }
+    return added;
+  }
+
+  /** 运行期删除域名;入参无法规范化按"不存在"处理,返回 false. */
+  public boolean denyDomain(String domain) {
+    String key;
+    try {
+      key = normalizeHost(domain);
+    } catch (IllegalArgumentException exception) {
+      return false;
+    }
+    boolean removed = allowedHosts.remove(key);
+    if (removed) {
+      displayByKey.remove(key);
+    }
+    return removed;
   }
 
   @Override

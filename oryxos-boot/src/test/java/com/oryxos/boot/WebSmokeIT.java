@@ -83,6 +83,18 @@ class WebSmokeIT {
   }
 
   @Test
+  @DisplayName("白名单查询端点真实链路可达_生效名单回传")
+  void sandboxWhitelist_reachable() throws Exception {
+    mockMvc
+        .perform(get("/api/v1/sandbox/whitelist"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.code").value("SUCCESS"))
+        .andExpect(jsonPath("$.data.allowedPaths").isArray())
+        .andExpect(jsonPath("$.data.allowedCommands").isArray())
+        .andExpect(jsonPath("$.data.allowedDomains").isArray());
+  }
+
+  @Test
   @DisplayName("管理台在真实装配下被托管_根路径转发入口页,子路由回落内容")
   void adminSpa_hosted() throws Exception {
     // MockMvc 不重派发 forward:根路径只断言转发目标,真实容器行为走 quickstart 人工项

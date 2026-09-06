@@ -191,4 +191,94 @@ class WhitelistSandboxTest {
     assertThatThrownBy(() -> sandboxWith(List.of(), List.of(), List.of("exa mple.com")))
         .isInstanceOf(IllegalArgumentException.class);
   }
+
+  @Test
+  @DisplayName("运行期增删命令_立即影响后续enforce且幂等")
+  void runtimeCommandMutation_takesEffectImmediately() {
+    WhitelistSandbox sandbox = sandboxWith(List.of(), List.of("ls"), List.of());
+    assertThatThrownBy(() -> sandbox.enforce(new SandboxAction(ActionType.SHELL_EXEC, "rm x")))
+        .isInstanceOf(SandboxViolationException.class);
+
+    org.assertj.core.api.Assertions.assertThat(sandbox.allowCommand("rm")).isTrue();
+    org.assertj.core.api.Assertions.assertThat(sandbox.allowCommand("rm")).isFalse();
+    assertThatCode(() -> sandbox.enforce(new SandboxAction(ActionType.SHELL_EXEC, "rm x")))
+        .doesNotThrowAnyException();
+
+    org.assertj.core.api.Assertions.assertThat(sandbox.denyCommand("rm")).isTrue();
+    org.assertj.core.api.Assertions.assertThat(sandbox.denyCommand("rm")).isFalse();
+    assertThatThrownBy(() -> sandbox.enforce(new SandboxAction(ActionType.SHELL_EXEC, "rm x")))
+        .isInstanceOf(SandboxViolationException.class);
+    org.assertj.core.api.Assertions.assertThat(sandbox.allowedCommandView()).containsExactly("ls");
+  }
+
+  @Test
+  @DisplayName("运行期命令项校验_空白或多token拒绝")
+  void runtimeCommand_rejectsBlankAndMultiToken() {
+    WhitelistSandbox sandbox = sandboxWith(List.of(), List.of(), List.of());
+
+    assertThatThrownBy(() -> sandbox.allowCommand("ls -l"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("单个首 token");
+    assertThatThrownBy(() -> sandbox.allowCommand(" "))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  @DisplayName("运行期增删文件根目录_立即生效且视图为规范化绝对路径")
+  void runtimePathMutation_normalizedAndEffective() {
+    WhitelistSandbox sandbox = sandboxWith(List.of(workspace.toString()), List.of(), List.of());
+    // 取工作区的兄弟目录,确保它在初始白名单之外
+    Path extra = workspace.resolve("..").resolve("extra-root").normalize();
+    String outside = extra.resolve("f.txt").toString();
+    assertThatThrownBy(() -> sandbox.enforce(new SandboxAction(ActionType.FILE_ACCESS, outside)))
+        .isInstanceOf(SandboxViolationException.class);
+
+    org.assertj.core.api.Assertions.assertThat(sandbox.allowPath(extra.toString())).isTrue();
+    assertThatCode(() -> sandbox.enforce(new SandboxAction(ActionType.FILE_ACCESS, outside)))
+        .doesNotThrowAnyException();
+    org.assertj.core.api.Assertions.assertThat(sandbox.allowedPathView())
+        .contains(extra.normalize().toAbsolutePath().toString());
+
+    org.assertj.core.api.Assertions.assertThat(sandbox.denyPath(extra.toString())).isTrue();
+    assertThatThrownBy(() -> sandbox.enforce(new SandboxAction(ActionType.FILE_ACCESS, outside)))
+        .isInstanceOf(SandboxViolationException.class);
+    // 无法规范化的入参:新增抛错,删除按不存在处理
+    assertThatThrownBy(() -> sandbox.allowPath("\u0000illegal"))
+        .isInstanceOf(IllegalArgumentException.class);
+    org.assertj.core.api.Assertions.assertThat(sandbox.denyPath("\u0000illegal")).isFalse();
+  }
+
+  @Test
+  @DisplayName("运行期增删域名_立即生效且视图保留管理员可读原文")
+  void runtimeDomainMutation_effectiveWithReadableView() {
+    WhitelistSandbox sandbox = sandboxWith(List.of(), List.of(), List.of("example.com"));
+    assertThatThrownBy(
+            () ->
+                sandbox.enforce(
+                    new SandboxAction(ActionType.HTTP_REQUEST, "https://api.example.com/x")))
+        .isInstanceOf(SandboxViolationException.class);
+
+    org.assertj.core.api.Assertions.assertThat(sandbox.allowDomain("api.example.com")).isTrue();
+    org.assertj.core.api.Assertions.assertThat(sandbox.allowDomain("api.example.com")).isFalse();
+    assertThatCode(
+            () ->
+                sandbox.enforce(
+                    new SandboxAction(ActionType.HTTP_REQUEST, "https://api.example.com/x")))
+        .doesNotThrowAnyException();
+    // 视图是原始可读文本,不是 dns:/ip: 规范化键
+    org.assertj.core.api.Assertions.assertThat(sandbox.allowedDomainView())
+        .containsExactlyInAnyOrder("example.com", "api.example.com");
+
+    org.assertj.core.api.Assertions.assertThat(sandbox.denyDomain("api.example.com")).isTrue();
+    assertThatThrownBy(
+            () ->
+                sandbox.enforce(
+                    new SandboxAction(ActionType.HTTP_REQUEST, "https://api.example.com/x")))
+        .isInstanceOf(SandboxViolationException.class);
+    org.assertj.core.api.Assertions.assertThat(sandbox.denyDomain("api.example.com")).isFalse();
+    // 坏项:新增抛错,删除按不存在处理
+    assertThatThrownBy(() -> sandbox.allowDomain("exa mple.com"))
+        .isInstanceOf(IllegalArgumentException.class);
+    org.assertj.core.api.Assertions.assertThat(sandbox.denyDomain("exa mple.com")).isFalse();
+  }
 }
