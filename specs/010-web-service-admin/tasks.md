@@ -139,3 +139,35 @@ description: "Task list for 010 Web Service 与第一版管理平台"
 - 课件交付物比对：六个 Controller ✓（T012/T015/T018）、GlobalExceptionHandler 扩展复用信封 ✓（T008-T010）、springdoc 集成既有零改动 ✓、三个 harness 测试类 ✓（T011/T008/T019）、配置 ✓（T001 + 既有）、前端与构建串联 ✓（T022/T023，R6 手动方案）、SPA 回落 ✓（T024）、风格 skill ✓（T021）。
 - 比对差异（多出的）：T002-T007 SessionManager 端口扩展（用户批准的 clarify Q1）、T010 异常载体核实（research R5）、T014/T017/T024 三个额外测试类（harness 自然延伸，测试类非对外概念）。
 - 反作弊提醒：不得删断言/@Disabled/放宽阈值；测试红了修实现。
+
+## 第 27 节人推串联（复用 010，不开新 feature）
+
+用户已批准 `lesson27-preflight.md` 的 D27-01/02/03；旧 T001–T028 的勾选仅代表 010 原交付。
+
+- [x] T029 读取课件/技术方案/前序交付物，确认 60 核心类及 29 测试类存在，记录三项适配决议并建立第 27 节分支。
+- [x] T030 [US1] 先补 `MockChatModelTest`，实现显式 `mock` 模型及 ProviderConfiguration 接线；仅模型使用合成响应，保留真实工具与审计。
+- [x] T031 [US1] `oryxos.root` 统一现有 core/memory/tool/CLI 和默认 SQLite 路径，保持默认 `.oryxos`；按 D27-03 修复显式 Bootstrap 缺失与读取失败，回归默认配置及旧构造入口。
+- [x] T032 [US1] 新增 boot `MockProviderFlowTest`：手工组合真实服务，SQLite 审计 2+1、真实 Memory 写入、完整角色历史、CLI/查询端点同源；覆盖三类失败的审计。
+- [x] T033 [US1] 新增 boot `MockAgentE2ETest`：随机真实 HTTP 端口、临时工作区和库、生产装配/Provider 注册、两轮一次 Tool/跨会话记忆/隔离/前端资源；默认 gate 执行。
+- [x] T034 [US1] 新增 boot `HumanTriggerFlowIT`（integration 标签）：真实模型/天气及 CLI/REST 两入口对账、Memory/工具三根支柱与失败路径；缺真实条件则如实保留未通过。
+- [x] T035 [US4] 按 admin-ui 技能补会话只读详情，沿用现有接口/信封/分页；前端构建、三态和真实 HTTP 回落验证。
+- [x] T036 更新 README 与 config/application.yml.example 的无 key mock 流程，记录实际请求字段和动态 sessionId；同步当前事实源与 AGENTS 的相关落点。
+- [x] T037 执行受影响测试和不跳插件 `mvn clean verify`，记录门禁原始日志，核对 27 节 harness/交付物/H4/前序回归；不自动 commit/push。
+- [x] T038 完成本节实现一致性复审与验收报告，准确列出真实网络和人工项，未执行的验收不可用默认组绿灯替代。
+- [x] T039 修复 T033 真实 serve 组合发现的调度器依赖缺失：在现有 CoreEngineConfiguration 显式提供受 Spring 生命周期管理的 ThreadPoolTaskScheduler，仅常驻模式、用户 Bean 优先；保留 AgentScheduler 公开签名与默认 chat 不注册，重跑真实启动及前序装配测试。
+- [x] T040 修复一致性审查 I27-01：StatusCommand 使用 CliFiles.workspace()，由 InitCommandTest 验证默认 init 后 status 同根，保留未设系统属性的默认行为。（L27-002）
+- [x] T041 修复全仓门禁两次复现的 Mem0 契约夹具跨用例请求污染：共用临时 CA、每例独立 HTTPS 端口，上一端口关闭后才切 Dispatcher；保留全部次数/操作 ID/超时断言及 Mem0 生产传输实现，增加端口隔离与 TLS 延续验证。（L27-007）
+
+追加补救任务的执行位置：T039 必须在 T033 最终确认前完成，T040 必须在 T031/T037 最终确认前完成；编号保留发现顺序，不表示运行顺序。
+
+## 开发启停脚本补充（2026-09-07 用户请求）
+
+- [x] T042 新增 bin/start.sh、stop.sh 与共享进程状态 helper：同一 JAR 启停 server/manager，读取外部 YAML，安全导入 DeepSeek .env 变量，首次配置/工作区初始化、日志、PID 身份校验及重复启停。
+- [x] T043 添加 DeepSeek 开发 YAML 样例和本机忽略配置，保留 27 节 mock 样例；同步 Git 忽略/LF 规则、README 与 AGENTS。
+- [x] T044 运行 Bash 语法检查与隔离 Git Bash/真实 JAR 生命周期测试，覆盖空白路径、YAML/安全 .env、重复启动、占用端口、PID 身份拒绝、数据保留及失败清理，记录 dev-launcher-verification.md；不自动提交/推送。
+
+### 用户确认调整为前后端开发模式
+
+- [x] T045 start.sh 默认启动后端 + Vite 两个进程（8080/5173），代理跟随后端端口；Node 启动器写原生 PID、保留严格端口、去除前端 DeepSeek 环境变量，stop.sh 先校验两个身份再停止，兼容旧后端单进程记录。
+- [x] T046 验证 Vue/CSS 实际 HMR、跨端口 API 代理、双进程启停、失败回滚/恢复、密钥不进前端、端口与 PID 冲突拒绝及生产 build 兼容，记录 dev-mode-verification.md。
+- [x] T047 README 与 AGENTS 明确开发双进程和发布单 JAR 的区别、Node/依赖要求及启动参数；保留原单进程验收为历史。

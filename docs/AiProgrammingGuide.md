@@ -1,5 +1,7 @@
 # OryxOS AI 编程指南
 
+> 第 27 节实施纪律（2026-09-06）：串联课复用 010 台账，不创建新 feature。按用户批准的 D27-01/02/03 适配会话分页、工作区根与显式 Bootstrap 失败语义；只替换模型的 `MockProviderFlowTest`/`MockAgentE2ETest` 进入默认门禁，`HumanTriggerFlowIT` 用 integration 标签执行真实 Provider/天气、失败审计与跨会话记忆。前端需 `npm ci` 后构建进 JAR，风格以 website 实际源码为准。来源、对账和任务见[第 27 节记录](../specs/010-web-service-admin/lesson27-preflight.md)。
+
 > 007补充实施纪律（2026-08-31）：用户批准最小官方SDK安全补丁回移，先执行新增T076–T079的来源锁、红绿测试、可重复构建和原始扫描/补丁处置证明，再继续暂存机制。用户最新确认所有代码、测试及回归均由主模型承担，不再调度Spark；具体验收见[SDK安全回移契约](../specs/007-memory-backends/contracts/sdk-security-backport.md)。
 
 > 本文档定义 OryxOS 的 AI 编程实施思路。主体思路是用 **Spec-Kit** 完成主体开发，把已有的需求文档和技术方案喂给 Spec-Kit，按五大核心能力拆成 5 个 user story 逐步实施；后续增量阶段切换到手动提示词配合 Claude Code。前置阅读《项目篇 OryxOS 业界调研》《OryxOS 需求文档》《OryxOS 技术方案》。本文档讲思路和拆解方法，不绑定具体时间安排，也不展开提示词细节。

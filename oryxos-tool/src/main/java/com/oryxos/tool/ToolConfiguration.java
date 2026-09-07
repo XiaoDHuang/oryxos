@@ -20,6 +20,7 @@ import java.util.Map;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.aop.support.AopUtils;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -41,6 +42,9 @@ import org.springframework.web.client.RestClient;
   HttpSandboxProperties.class
 })
 class ToolConfiguration {
+
+  @Value("${oryxos.root:.oryxos}")
+  private String workspaceRoot = ".oryxos";
 
   @Bean
   ToolArgumentValidator toolArgumentValidator() {
@@ -87,7 +91,7 @@ class ToolConfiguration {
   McpClientService mcpClientService(
       ToolRegistry registry, Sandbox sandbox, ToolArgumentValidator validator) {
     return new McpClientService(
-        Path.of(".oryxos", "mcp_servers.yaml"),
+        Path.of(workspaceRoot).resolve("mcp_servers.yaml"),
         registry,
         sandbox,
         validator::validateSchema,

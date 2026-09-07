@@ -1,0 +1,18 @@
+# start.sh 首次启动复制为 config/application.yml，现有文件不会被覆盖。
+# DeepSeek 配置由 Spring 从此 YAML 读取；密钥通过进程环境或根 .env 注入。
+oryxos:
+  providers:
+    - name: deepseek
+      api-key: ${DEEPSEEK_API_KEY:}
+      base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
+memory:
+  backend: markdown
+file:
+  allowed_paths: [.oryxos]
+shell:
+  allowed_commands: [ls, cat, pwd, echo]
+http:
+  allowed_domains: [api.open-meteo.com, api.openweathermap.org]
+logging:
+  level:
+    com.oryxos: DEBUG

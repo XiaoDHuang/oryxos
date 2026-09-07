@@ -161,13 +161,13 @@ OryxOS 是一个 Spring Boot 3.x 单体应用，跑在 JDK 21 上。对外只有
 
 ## 快速开始
 
-> ⚠️ Maven 多模块骨架已可编译打包；Agent 运行时能力仍在核心阶段实现中。下面命令中，`init` 已可用，其余为成形后的目标体验。详见 [项目状态](#项目状态)。
+Provider、ReAct、CLI、Memory、Tool、Sandbox、定时与 Web Service 已有实现；第 27 节人推全链路已通过无 key、真模型及浏览器验收。凭证通过环境变量注入，不填入 Profile 明文。详细结果见 [第 27 节报告](specs/010-web-service-admin/lesson27-acceptance.md)。
 
 ```bash
 # 1. 在你的项目目录下初始化 OryxOS 工作区
 oryxos init
 
-# 2. 编辑默认 Profile，填入你的 LLM API Key
+# 2. 编辑默认 Profile 的模型与工具，API key 单独从环境变量注入
 vim .oryxos/profiles/default.yaml
 
 # 3. 启动交互式对话
@@ -179,6 +179,107 @@ oryxos serve --port 8080
 
 `oryxos init` 会创建 `.oryxos/` 工作目录，包含六个子目录：`profiles/`、`sessions/`、`skills/`、`logs/`、`tools/`、`memory/`，以及 `AGENTS.md` / `SOUL.md` / `USER.md`、`memory/MEMORY.md`、`mcp_servers.yaml`、空的 `oryxos.db` 占位，和一份可直接对话的默认 Profile。SQLite 三张表（`sessions` / `tool_invocations` / `llm_calls`）在首次启动 Spring 的命令（`chat` / `serve`）时由 `db/schema.sql` 初始化。
 
+### 开发调试：一键启动 Server 和 Manager
+
+在 **Linux Bash 或 Windows Git Bash** 中执行（PowerShell 的 `bash` 可能指向 WSL，请直接打开 Git Bash）：
+
+```bash
+# 首次在 oryxos-web/src/main/frontend 执行 npm ci；后端没有产物时先运行 mvn package。
+# 默认后端 8080 + Vite 前端 5173
+bash bin/start.sh
+# 或分别指定两个开发端口
+bash bin/start.sh 8081 5174
+
+# 查看本次启动日志
+tail -f "$(cat .run/dev-server/server.logpath)"
+tail -f "$(cat .run/dev-server/manager.logpath)"
+
+# 同时关闭 Server 和 Manager
+bash bin/stop.sh
+```
+
+开发模式启动两个进程：Spring Boot 后端 `http://127.0.0.1:8080`，Vite Manager `http://127.0.0.1:5173/admin/`；接口文档位于后端 `/swagger-ui.html`。前端 `/api` 自动代理到本次选择的后端端口，端口占用时失败而不自动换端口。脚本等待后端健康与前端代理就绪后才报告成功，两者固定绑定本机。
+
+**修改 Vue/CSS 即时热更新，不需打包或重启后端。** 后端仍使用 fat JAR，修改 Java 后需 `mvn package` 再 stop/start。`stop.sh` 同时停止两个进程；重复 start 不会重复启动，若前端退出可再次 start 补起前端。启动失败只回收本次新建进程，不影响之前已运行的后端。
+
+前端启动器直接使用本工程安装的 Vite dev server（与 `npm run dev` 相同的开发模式），需要 Node 20.19+/22.12+。发布形态仍为先 `npm run build` 再打包 JAR，由后端托管静态 `/admin`；开发调试请使用 **5173** 的入口。开发代理地址由 Vite 服务端环境 `ORYXOS_API_TARGET` 设置，不向浏览器公开 DeepSeek 凭证，Vite 的文件服务仅允许前端工程目录。
+
+DeepSeek 的配置文件是 `config/application.yml`。首次缺失时脚本从 `config/application-dev.yml.example` 复制，已有文件不会覆盖；本地文件已加入 Git 忽略。配置形状如下：
+
+```yaml
+oryxos:
+  providers:
+    - name: deepseek
+      api-key: ${DEEPSEEK_API_KEY:}
+      base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
+```
+
+`start.sh` 自动读取仓库根 `.env` 的 `DEEPSEEK_API_KEY` / `DEEPSEEK_BASE_URL`，只填补尚未设置的环境变量；不执行 `.env` 内容，也不打印密钥。Spring 从 YAML 解析这些占位符并创建 Provider。具体模型名称和 temperature 仍由工作区 `profiles/default.yaml` 的 provider 段指定。`.env` 只支持单行赋值及成对引号，不做 shell 命令或变量展开。
+
+需要覆盖默认路径时，用环境变量传递；相对路径均以仓库根为基准，与执行脚本时所在目录无关：
+
+| 变量 | 默认用途 |
+|---|---|
+| `ORYXOS_CONFIG` | `config/application.yml`，指定其他 YAML 时文件必须已存在 |
+| `ORYXOS_WORKSPACE` | `.oryxos`，整个目录不存在时自动 init；已有工作区不重建 |
+| `ORYXOS_JAR` | `oryxos-boot/target/` 中唯一的 fat JAR |
+| `ORYXOS_ENV_FILE` | 仓库根 `.env` |
+| `JAVA_HOME` | JDK 21+；否则从 PATH 查 java/jcmd |
+| `NODE_BIN` | 可指定 Node.js 可执行文件；否则从 PATH 查 node |
+| `JAVA_OPTS` | 可选，例如 `-Xms256m -Xmx1g`，按空白分隔，不使用 eval |
+
+两个 PID、启动标记与各自日志在 `.run/dev-server/`，该目录不提交 Git。停止前校验全部在运行的进程身份，记录不匹配时不停止任何一个；端口占用也不会查杀其他程序。Linux 先 TERM 并等待，必要时显式 `bash bin/stop.sh --force`；Windows 使用已校验 PID 的 `taskkill /T /F`，适用于本机开发停止，不作为生产优雅停机方案。
+
+### 从源码验证无 key 的完整链路（第 27 节）
+
+从仓库根执行以下构建步骤；前端产物打进同一个 fat JAR，运行时不需要 Node。首次按锁文件安装前端依赖：
+
+```bash
+cd oryxos-web/src/main/frontend
+npm ci --no-audit --no-fund
+npm run build
+cd ../../../..
+mvn clean verify
+```
+
+下面以独立的 `.oryxos-demo27` 为例，避免改动已有工作区。`oryxos.root` 是 JVM 系统属性，放在 `-jar` 前；默认仍为 `.oryxos`。测试/演示选 `mock` 不需真实 key、不连接模型服务，审计的 usage 为合成值。
+
+```bash
+java "-Doryxos.root=.oryxos-demo27" -jar oryxos-boot/target/oryxos-boot-1.0.0-SNAPSHOT.jar init
+cp config/mock-agent.yaml.example .oryxos-demo27/profiles/mock-agent.yaml
+cp config/application.yml.example .oryxos-demo27/application.yml
+java "-Doryxos.root=.oryxos-demo27" "-Dspring.config.additional-location=file:./.oryxos-demo27/application.yml" -jar oryxos-boot/target/oryxos-boot-1.0.0-SNAPSHOT.jar serve --port 8080
+```
+
+样例复制后使用 `.yml` 扩展名供 Spring 读取。PowerShell 使用 `Copy-Item` 代替 `cp` 即可。
+
+Windows/JDK 21 若启动报 `Unable to establish loopback connection` 且堆栈含 `UnixDomainSockets`，为该 JVM 增加 `-Djdk.net.unixdomain.tmpdir=<已存在的短绝对目录>`；这是本机 JDK 临时 socket 路径的兼容设置，不需要修改 API 或 Provider 配置。
+
+API 创建请求的 `profileName` 与 `userId` 均必填；只使用返回的 sessionId。以下 PowerShell 命令同时验证创建、真实保存、会话、Memory 与 Tool 查询：
+
+```powershell
+$base = 'http://localhost:8080/api/v1'
+$session = Invoke-RestMethod "$base/sessions" -Method Post -ContentType 'application/json' -Body '{"profileName":"mock-agent","userId":"demo27"}'
+$id = [Uri]::EscapeDataString($session.data.sessionId)
+$body = [Text.Encoding]::UTF8.GetBytes('{"content":"记住：我在北京，喜欢美式咖啡"}')
+Invoke-RestMethod "$base/sessions/$id/messages" -Method Post -ContentType 'application/json; charset=utf-8' -Body $body
+Invoke-RestMethod "$base/sessions/$id"
+Invoke-RestMethod "$base/sessions?page=0&size=100"
+Invoke-RestMethod "$base/memory"
+Invoke-RestMethod "$base/tools"
+```
+
+浏览器打开 `http://localhost:8080/admin/sessions`，点击会话 ID 查看同一条完整历史；`/admin/memory` 显示刚保存的事实。CLI 也可使用同样的两个 `-D` 参数，将 `serve --port 8080` 换成 `chat --profile mock-agent`；输入“记住：…”再输入 `/quit`。每次显式保存应产生 user/assistant/tool/assistant 四条历史，`llm_calls` 两条、`tool_invocations` 一条。mock 普通提问只回显已注入上下文，不能代替真模型验收。
+
+需要真模型时使用独立配置声明 DeepSeek 与环境变量占位，并在临时 Profile 中引用它；不要让 mock 配置覆盖真实 Provider 列表。环境变量不会因根目录存在 `.env` 自动加载。手工运行第 27 节真模型测试：
+
+```bash
+# 先在进程环境中注入 DEEPSEEK_API_KEY；仅使用临时合成数据，查询公开北京天气。
+mvn -pl oryxos-boot -am test -Dtest=HumanTriggerFlowIT -Dsurefire.failIfNoSpecifiedTests=false -Dtest.excludedGroups=
+```
+
+本示例的 `serve` 仍包含既有无认证的 Sandbox 管理 API，部署时仅向可信管理网络开放。
+
 ---
 
 ## 命令一览
@@ -189,7 +290,7 @@ OryxOS 通过命令行工具完成主要操作，核心阶段共 12 个命令。
 |---|---|
 | `oryxos init` | 初始化 `.oryxos/` 工作区 |
 | `oryxos status` | 查看配置和运行状态 |
-| `oryxos chat` | 交互式多轮对话（`--profile` 指定 Agent，`--message` 单条消息后退出） |
+| `oryxos chat` | 交互式多轮对话（`--profile` 指定 Agent，`/quit` 退出） |
 | `oryxos serve` | 启动 HTTP API 服务（默认端口 8080） |
 | `oryxos gateway` | 启动多渠道守护进程 |
 | `oryxos profile list` | 列出所有 Profile |
@@ -201,6 +302,8 @@ OryxOS 通过命令行工具完成主要操作，核心阶段共 12 个命令。
 | `oryxos session list` | 列出会话历史 |
 
 对外的 REST API 覆盖会话管理、Agent 调用、Profile/Memory/Tool 信息查询、系统状态六类操作，核心阶段先提供 10 个关键端点（`POST /api/v1/sessions`、`POST /api/v1/sessions/{id}/messages`、`GET/DELETE /api/v1/sessions/{id}`、`POST /api/v1/agents/{name}/invoke`、`GET /api/v1/profiles`、`GET /api/v1/memory`、`GET /api/v1/tools`、`GET /api/v1/health`、`GET /api/v1/info`）。
+
+010 另已交付 `GET /api/v1/sessions?page=0&size=20`，按最后活跃倒序返回摘要，size 最大 100；详情的 `totalMessages` 提供消息总数。既有 `7b1eceb` 还提供三项运行时白名单操作：`GET /api/v1/sandbox/whitelist`、`POST /api/v1/sandbox/whitelist/entries`、`DELETE /api/v1/sandbox/whitelist/entries`。白名单只在进程内即时生效，重启回配置基线；管理台保持只读。
 
 ---
 
@@ -225,7 +328,7 @@ OryxOS 定位严监管企业，**安全是 day one 的架构设计，不是事�
 
 ## 项目状态
 
-OryxOS 目前处于**核心阶段实施中**：Maven 9 模块与 fat JAR 已就绪；006 文件式 Memory 已归档提交（`3d60ee0`）。007 三后端默认 Markdown 兼容（`2a63e58`）、SQLite 后端（`5333e77`）与受控自托管 Mem0 适配器（US3，`83a8a50`）均已提交实现；镜像安全门禁与真实本地模型（mistral-nemo/bge-m3 本机回环）验收已通过，US4 切换/审计集成测试已绿；R5 全仓封板回归未做，007 未归档，详见 [007 验收台账](specs/007-memory-backends/acceptance.md)。
+OryxOS 目前处于**核心阶段实施中**：Maven 9 模块与 fat JAR 已就绪。006 已归档（`3d60ee0`）；007 Memory 三后端已于 2026-09-04 归档（`d040713`，85/85，R1–R5 通过，生产启用仍需获准环境）；008 Sandbox（`2980ad0`）、009 定时（`e21b016`）、010 Web Service 与管理台（`9118cc6`）已提交，随后 `7b1eceb` 增加运行时白名单管理。第 27 节人推链路已验收，当前改动待提交，见 [007 验收台账](specs/007-memory-backends/acceptance.md) 与 [第 27 节报告](specs/010-web-service-admin/lesson27-acceptance.md)。
 
 核心阶段目标：用 4 周 / 12 小时的最短链路，交付一个可演示的最小完整 Agent OS **运行时内核**——配置一个 Agent、通过 CLI 跟它对话、它能调用 LLM 和工具完成任务，并能通过 REST API 对外暴露。企业级治理能力（多租户、SSO、完整审计、Tool Policy）不在这一阶段范围内，由扩展阶段和社区接力补齐。
 

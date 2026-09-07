@@ -1,0 +1,17 @@
+# 复制到所选工作区的 profiles/mock-agent.yaml；与全局 name: mock 配套。
+name: mock-agent
+description: 无 key 的合成模型链路验证
+identity:
+  agent_name: mock-agent
+  prompt: 这是离线接线验证，不是真实推理。
+provider:
+  name: mock
+  model: mock-script
+  temperature: 0
+tools: [save_memory, recall_memory]
+bootstrap: [AGENTS.md, SOUL.md, USER.md]
+skills: []
+schedules: []
+settings:
+  max_iterations: 10
+  max_history_turns: 20

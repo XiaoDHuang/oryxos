@@ -721,6 +721,18 @@ mvn clean package
 
 ## 12. 关键流程
 
+### 第 27 节串联的实施映射（2026-09-06 用户确认）
+
+人推对账复用 010 已交付的 `SessionManager.listSessions(page,size)` 与 `GET /api/v1/sessions` 分页信封，默认 20、最多 100 条；不新增重复的 `listRecent`。创建请求使用 `profileName/userId`，详情 `totalMessages` 对账消息条数，CLI/REST/管理台均以实际返回的 Session ID 查账。课件示例的可选 status 过滤和列表消息条数暂不增加。
+
+离线验证可在 `oryxos.providers` 显式声明 `name: mock`，由 `ProviderConfiguration` 映射到 `MockChatModel`；无需 key、无模型网络调用，只有模型是脚本响应。`记住：` 消息产生一次 `save_memory` 意图，工具结果后结束；真实 ReAct/Memory/Session/SQLite 审计继续执行，mock usage 明确是合成值，不能作为真实模型效果或计费证明。默认 Provider 配置不添加 mock。
+
+`-Doryxos.root=...` 覆盖工作区根（默认 `.oryxos`），由既有 Core/Memory/Tool/CLI 装配点消费；默认 SQLite URL 随根派生，显式数据源配置优先。不新增课件中不存在于仓库的 `OryxOsRuntime`，不改变 9 模块与核心 Memory 端口。工作区改变不自动扩大 Sandbox 白名单。
+
+显式引用的 Bootstrap 缺失或上下文文件无法读取时必须失败，空引用列表不推定必需文件。此项修正 002 中把“WARN 后继续”作为通过条件的旧测试，依据是 002 FR-004 和第 27 节用户决议。
+
+自动门禁由无 key 的 `MockProviderFlowTest`、`MockAgentE2ETest` 承载；`HumanTriggerFlowIT` 用 integration 标签显式执行真实模型/天气对账。管理台详情只消费已有查询接口，视觉以 `website/.vitepress/theme/custom.css` 的实际值为准。代码存在、mock 验证、真实模型验收分别记录，不能相互替代。
+
 早期按"一个 Demo 验证一个能力"拆过五个流程，但真实场景里能力从来不是分开跑的。改成两个**每日自动运行**的端到端流程，对应需求文档第 13 章验收的两个 demo。两个流程横向串起全部五大核心能力加定时任务这个第三触发源，不再一个流程只验一个能力——而且两个流程本身就是第 11 章"定义一个 Agent"的具体产出：每个流程里的 Agent 都是一份 Skill 加一份绑定它的 Profile，底座和 Agent 定义两部分在这里合到一起跑通。
 
 ### 12.1 Demo 一：每日天气

@@ -68,7 +68,8 @@ class Mem0MemoryStoreContractTest extends AbstractMemoryStoreContractTest {
   }
 
   @BeforeEach
-  void resetProtocol() {
+  void resetProtocol() throws IOException {
+    https.restartServer();
     remote = new ProtocolServer();
     https.server().setDispatcher(remote);
     guarded = new CopyOnWriteArrayList<>();

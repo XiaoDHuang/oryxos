@@ -3,6 +3,9 @@ CLAUDE.md symlink=true
 .claude/skills symlink=true
 .cursor/skills symlink=true
 
+# 启停脚本在 Linux 与 Git Bash 使用相同 LF 行尾。
+/bin/*.sh text eol=lf
+
 # 受控SDK输入必须跨平台保留字节；上游diff中的空格是补丁数据。
 integrations/mem0-adapter/patches/*.patch -text -whitespace
 integrations/mem0-adapter/vendor/upstream/* -text -whitespace

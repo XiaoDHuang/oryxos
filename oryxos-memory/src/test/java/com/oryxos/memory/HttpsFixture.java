@@ -29,7 +29,8 @@ public final class HttpsFixture implements AutoCloseable {
 
   private final Path directory;
   private final char[] password;
-  private final MockWebServer server;
+  private MockWebServer server;
+  private final SSLContext serverSslContext;
   private final SSLContext clientSslContext;
   private final X509Certificate certificateAuthority;
   private final X509Certificate serverCertificate;
@@ -39,12 +40,14 @@ public final class HttpsFixture implements AutoCloseable {
       Path directory,
       char[] password,
       MockWebServer server,
+      SSLContext serverSslContext,
       SSLContext clientSslContext,
       X509Certificate certificateAuthority,
       X509Certificate serverCertificate) {
     this.directory = directory;
     this.password = password;
     this.server = server;
+    this.serverSslContext = serverSslContext;
     this.clientSslContext = clientSslContext;
     this.certificateAuthority = certificateAuthority;
     this.serverCertificate = serverCertificate;
@@ -81,7 +84,7 @@ public final class HttpsFixture implements AutoCloseable {
       MockWebServer server = new MockWebServer();
       server.useHttps(serverContext.getSocketFactory(), false);
       server.start();
-      return new HttpsFixture(directory, password, server, clientContext, ca, leaf);
+      return new HttpsFixture(directory, password, server, serverContext, clientContext, ca, leaf);
     } catch (InterruptedException exception) {
       Thread.currentThread().interrupt();
       deleteDirectory(directory);
@@ -132,6 +135,22 @@ public final class HttpsFixture implements AutoCloseable {
 
   Path workDirectory() {
     return directory;
+  }
+
+  /** 用例复用CA但不复用端口,避免已发出的迟到请求进入下一例的Dispatcher. */
+  void restartServer() throws IOException {
+    ensureOpen();
+    MockWebServer next = new MockWebServer();
+    next.useHttps(serverSslContext.getSocketFactory(), false);
+    // 旧端口仍被占用时先申请新端口,操作系统不能立即复用刚释放的端口。
+    next.start();
+    try {
+      server.shutdown();
+    } catch (IOException exception) {
+      next.shutdown();
+      throw exception;
+    }
+    server = next;
   }
 
   @Override

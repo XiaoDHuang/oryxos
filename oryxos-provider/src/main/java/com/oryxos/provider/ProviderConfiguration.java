@@ -37,6 +37,11 @@ public class ProviderConfiguration {
         LOGGER.error("跳过 oryxos.providers 中缺少 name 的 provider 条目");
         continue;
       }
+      // mock 由管理员显式选择,凭证豁免仅限本地脚本模型,不能扩散到真实 Provider。
+      if ("mock".equals(entry.getName())) {
+        registry.put("mock", new MockChatModel());
+        continue;
+      }
       if (entry.getApiKey() == null || entry.getApiKey().isBlank()) {
         LOGGER.error(
             "Provider '{}' 被跳过:凭据缺失 —— 请设置其 api-key 在 oryxos.providers 中引用的环境变量",

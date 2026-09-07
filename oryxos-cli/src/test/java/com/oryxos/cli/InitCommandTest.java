@@ -2,6 +2,8 @@ package com.oryxos.cli;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.DisplayName;
@@ -13,6 +15,32 @@ import picocli.CommandLine;
 class InitCommandTest {
 
   @TempDir Path directory;
+
+  @Test
+  @DisplayName("系统属性覆盖同时用于默认init与轻命令_未设置时保留默认根")
+  void rootOverrideIsSharedByDefaultInitAndLightCommands() throws Exception {
+    String previous = System.getProperty("oryxos.root");
+    Path root = directory.resolve("isolated");
+    try {
+      System.setProperty("oryxos.root", root.toString());
+      assertThat(new CommandLine(new InitCommand()).execute()).isZero();
+      assertThat(CliFiles.workspace()).isEqualTo(root);
+      assertThat(root.resolve("profiles/default.yaml")).exists();
+      StringWriter output = new StringWriter();
+      CommandLine status = new CommandLine(new StatusCommand());
+      status.setOut(new PrintWriter(output));
+      assertThat(status.execute()).isZero();
+      assertThat(output.toString()).contains("Profile 数: 1");
+      System.clearProperty("oryxos.root");
+      assertThat(CliFiles.workspace()).isEqualTo(Path.of(".oryxos"));
+    } finally {
+      if (previous == null) {
+        System.clearProperty("oryxos.root");
+      } else {
+        System.setProperty("oryxos.root", previous);
+      }
+    }
+  }
 
   @Test
   @DisplayName("新工作区创建标准Memory双分区")

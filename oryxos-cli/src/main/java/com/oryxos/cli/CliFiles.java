@@ -11,9 +11,9 @@ final class CliFiles {
 
   private CliFiles() {}
 
-  /** 工作区目录:当前目录下的 .oryxos. */
+  /** 轻命令与 Spring 命令消费相同的系统属性,避免初始化和运行落到不同工作区. */
   static Path workspace() {
-    return Path.of(".oryxos");
+    return Path.of(System.getProperty("oryxos.root", ".oryxos"));
   }
 
   /** 是否为 YAML 文件. */

@@ -10,7 +10,7 @@ import org.slf4j.LoggerFactory;
 /**
  * 提供来自文件的 prompt 上下文:Profile 的 Bootstrap 文件(从工作区根读取)与 Skill 剧本({@code
  * .oryxos/skills/<name>/SKILL.md}). 课件的两条硬规则:每次调用都从磁盘 重新加载(不做缓存 —— 用户编辑立即生效),且绝不静默跳过 —— 引用的 Skill
- * 缺失是 错误,Bootstrap 文件缺失至少 WARN,因为静默丢掉人设是最恶劣的软失败。
+ * 缺失是错误,显式 Bootstrap 引用也必须失败,因为缺失人格仍继续执行会改变 Agent 行为。
  *
  * @author OryxOS Contributors
  */
@@ -34,6 +34,7 @@ public class ContextLoader {
         context.append(readFile(path)).append('\n');
       } else {
         LOGGER.warn("profile 引用的 Bootstrap 文件 {} 缺失", sanitize(bootstrapFile));
+        throw new IllegalStateException("Profile 引用的 Bootstrap 不存在: " + sanitize(bootstrapFile));
       }
     }
     for (String skill : profile.skills()) {
@@ -51,7 +52,7 @@ public class ContextLoader {
       return Files.readString(path);
     } catch (IOException e) {
       LOGGER.error("读取上下文文件 {} 失败: {}", sanitize(path), sanitize(e.getMessage()));
-      return "";
+      throw new IllegalStateException("上下文文件读取失败: " + sanitize(path), e);
     }
   }
 

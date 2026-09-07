@@ -19,6 +19,12 @@ hs_err_pid*
 .classpath
 .settings/
 bin/
+!/bin/
+/bin/*
+!/bin/start.sh
+!/bin/stop.sh
+!/bin/_server-common.sh
+!/bin/_manager.mjs
 out/
 
 # Node / JavaScript
@@ -27,6 +33,7 @@ node_modules
 dist/
 *.log
 package-lock.json
+!/oryxos-web/src/main/frontend/package-lock.json
 yarn.lock
 pnpm-lock.yaml
 
@@ -41,6 +48,9 @@ Desktop.ini
 
 # OryxOS local workspace (user data, never commit)
 .oryxos/
+.oryxos-demo27/
+/.run/
+/config/application.yml
 
 # Kimi Code project-local machine settings (absolute paths, never commit)
 .kimi-code/local.toml

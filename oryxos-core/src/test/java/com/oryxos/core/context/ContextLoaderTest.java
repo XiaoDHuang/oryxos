@@ -48,13 +48,28 @@ class ContextLoaderTest {
   }
 
   @Test
-  @DisplayName("Bootstrap缺失_WARN跳过不报错")
-  void missingBootstrap_warnsAndContinues() {
+  @DisplayName("显式Bootstrap缺失_警告并报错_D27决议")
+  void missingExplicitBootstrap_throws() {
     Profile profile = profileWith(List.of("AGENTS.md"), List.of());
 
-    String content = loader.load(profile);
+    assertThatThrownBy(() -> loader.load(profile))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("AGENTS.md");
+  }
 
-    assertThat(content).doesNotContain("AGENTS.md");
+  @Test
+  @DisplayName("未声明上下文文件时不推定必需文件")
+  void emptyReferencesRemainOptional() {
+    assertThat(loader.load(profileWith(List.of(), List.of()))).isEmpty();
+  }
+
+  @Test
+  @DisplayName("引用文件不可按UTF8读取时失败_不能用空上下文继续推理")
+  void unreadableContextFailsInsteadOfReturningEmptyText() throws IOException {
+    Files.write(workspace.resolve("SOUL.md"), new byte[] {(byte) 0xc3, (byte) 0x28});
+    assertThatThrownBy(() -> loader.load(profileWith(List.of("SOUL.md"), List.of())))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("上下文文件读取失败");
   }
 
   @Test

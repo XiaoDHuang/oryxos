@@ -23,7 +23,7 @@ public class InitCommand implements Callable<Integer> {
 
   /** 使用当前目录下的默认工作区. */
   public InitCommand() {
-    this(Path.of(".oryxos"));
+    this(CliFiles.workspace());
   }
 
   /** 测试和嵌入场景显式指定工作区,避免修改全局工作目录. */

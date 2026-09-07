@@ -1,0 +1,14 @@
+# 复制为 config/application.yml 后显式启用离线模型;不需要任何真实 Provider key。
+# mock 只验证接线:以“记住：”开头触发一次真实 save_memory,下一轮回显工具结果。
+# 普通提问回显已注入上下文,不代表真实推理;审计中的 token 为合成值。
+oryxos:
+  providers:
+    - name: mock
+memory:
+  backend: markdown
+file:
+  allowed_paths: []
+shell:
+  allowed_commands: []
+http:
+  allowed_domains: []

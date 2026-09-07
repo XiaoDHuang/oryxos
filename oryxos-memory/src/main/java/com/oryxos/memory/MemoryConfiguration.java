@@ -10,6 +10,7 @@ import java.util.regex.Pattern;
 import javax.sql.DataSource;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.SmartInitializingSingleton;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -69,6 +70,9 @@ class MemoryConfiguration {
   @ConditionalOnProperty(name = "memory.backend", havingValue = "markdown", matchIfMissing = true)
   static class MarkdownConfiguration {
 
+    @Value("${oryxos.root:.oryxos}")
+    private String workspaceRoot = ".oryxos";
+
     @Bean
     @ConditionalOnMissingBean({
       LongTermMemory.class,
@@ -76,7 +80,7 @@ class MemoryConfiguration {
       MemoryService.class
     })
     LongTermMemory longTermMemory() {
-      return new LongTermMemory(Path.of(".oryxos"));
+      return new LongTermMemory(Path.of(workspaceRoot));
     }
 
     @Bean

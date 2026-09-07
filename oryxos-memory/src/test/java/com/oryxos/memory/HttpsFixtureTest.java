@@ -59,6 +59,22 @@ class HttpsFixtureTest {
       }
       assertThat(fixture.server().takeRequest().getPath())
           .isEqualTo("/oryx-memory/v1/capabilities");
+      var previousServer = fixture.server();
+      fixture.restartServer();
+      assertThat(fixture.server()).isNotSameAs(previousServer);
+      assertThat(fixture.uri("/next").getPort()).isNotEqualTo(endpoint.getPort());
+      assertThat(fixture.server().getRequestCount()).isZero();
+      fixture.server().enqueue(new MockResponse().setBody("新用例"));
+      try (HttpClient client =
+          HttpClient.newBuilder().sslContext(fixture.clientSslContext()).build()) {
+        var next =
+            client.send(
+                HttpRequest.newBuilder(fixture.uri("/next")).GET().build(),
+                HttpResponse.BodyHandlers.ofString());
+        assertThat(next.body()).isEqualTo("新用例");
+        assertThat(previousServer.getRequestCount()).isEqualTo(1);
+        assertThat(fixture.server().getRequestCount()).isEqualTo(1);
+      }
     }
     assertThat(directory).doesNotExist();
   }

@@ -6,6 +6,12 @@
 
 ## Summary
 
+第 27 节在此 feature 的稳定提交上串联，分支 `027-lesson27-human-trigger`；范围与用户决议见 `lesson27-preflight.md` 和 spec 的 L27-001–007。新增的四类测试位于 provider（MockChatModelTest）与 boot（MockProviderFlowTest/MockAgentE2ETest/HumanTriggerFlowIT），公有 MockChatModel 位于 provider。无新 Maven 依赖/模块/表/端点，Spring AI 调用 API 已由本地 1.1.8 jar 核实；工作区与 Bootstrap 改动落现有 core/memory/tool/cli/boot 配置，公开 Memory 与 SessionManager 方法签名不变。
+
+真实常驻装配检查发现 Boot 未提供 ThreadPoolTaskScheduler，T039 在 CoreEngineConfiguration 增加包私有、条件启用、用户 Bean 优先的 Spring 托管工厂，保留 AgentScheduler 已定构造与执行方式。UI 在现有会话页增加查询参数选择和只读详情，使用已有 GET /sessions/{id}；官网实际设计 token 为准，不新增管理写操作。
+
+测试顺序：MockChatModel 红绿 → 真实组件手工对账 → 随机 HTTP 端口/临时 SQLite 整机验证 → integration 真模型/天气 → 前端构建与浏览器 → 全量 verify/一致性复审。详细证据记录在 lesson27-acceptance.md；无 key 测试不跳门禁，真模型结果不混入默认测试计数。
+
 把运行时内核包装成 `/api/v1` 下 11 个 REST 端点（核心 10 + 用户批准的只读会话列表），六个薄 Controller 共享 CLI 同一引擎入口（`AgentService.process`）；异常单出口复用既有 `ApiErrorResponse`/`ErrorCode`/`OryxException` 地基，`GlobalExceptionHandler` 只加三个映射方法；60 秒超时用 MVC Callable + `spring.mvc.async.request-timeout`；`SessionManager` 端口按用户批准做纯加法扩展（archive + 分页列表 + 会话状态视图）；管理平台为 Vue 3 + Vite 只读 SPA，产物提交进 `static/admin/` 由 Spring 托管并配 SPA 回落；视觉与工程约定固化成 `.agents/skills/oryxos-admin-ui/SKILL.md`（课件 `.claude/skills` 路径经既有软链达成）。
 
 ## Technical Context

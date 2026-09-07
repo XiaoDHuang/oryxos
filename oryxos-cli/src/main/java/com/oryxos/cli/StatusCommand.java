@@ -27,7 +27,7 @@ public class StatusCommand implements Runnable {
   @Override
   public void run() {
     PrintWriter out = commandSpec.commandLine().getOut();
-    Path workspace = Path.of(".oryxos");
+    Path workspace = CliFiles.workspace();
     if (!Files.isDirectory(workspace)) {
       out.println("未找到 .oryxos 工作区 —— 请先运行 oryxos init");
       return;

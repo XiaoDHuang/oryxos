@@ -23,6 +23,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -39,14 +41,16 @@ public class CoreEngineConfiguration {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(CoreEngineConfiguration.class);
 
-  private static final Path WORKSPACE_DIR = Path.of(".oryxos");
+  @Value("${oryxos.root:.oryxos}")
+  private String workspaceRoot = ".oryxos";
 
   /** 工作区未初始化时给出可操作的错误,而不是一堆 Bean 创建失败. */
-  private static Path requireWorkspace() {
-    if (!Files.isDirectory(WORKSPACE_DIR)) {
-      throw new IllegalStateException("未找到 .oryxos 工作区 —— 请先运行 oryxos init");
+  private Path requireWorkspace() {
+    Path workspace = Path.of(workspaceRoot);
+    if (!Files.isDirectory(workspace)) {
+      throw new IllegalStateException("未找到配置的工作区 —— 请先运行 oryxos init");
     }
-    return WORKSPACE_DIR;
+    return workspace;
   }
 
   /** 加载全部 Profile 并建内存索引;全局 provider 名集合由 provider 模块按类型供入. */
@@ -98,6 +102,17 @@ public class CoreEngineConfiguration {
   public AgentService agentService(
       ReActLoop reActLoop, ProfileRegistry profileRegistry, SessionManager sessionManager) {
     return new AgentService(reActLoop, profileRegistry, sessionManager);
+  }
+
+  /** Boot 的虚拟线程自动配置不会保证提供这个具体类型,常驻模式须显式交给容器托管. */
+  @Bean
+  @ConditionalOnProperty(prefix = "oryxos.scheduler", name = "enabled", havingValue = "true")
+  @ConditionalOnMissingBean(ThreadPoolTaskScheduler.class)
+  ThreadPoolTaskScheduler residentTaskScheduler() {
+    ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
+    scheduler.setThreadNamePrefix("oryxos-scheduler-");
+    scheduler.setRemoveOnCancelPolicy(true);
+    return scheduler;
   }
 
   /**
