@@ -1,5 +1,7 @@
 # OryxOS AI 编程指南
 
+> 第 28 节实施纪律（2026-09-07，用户已批准）：新版课件由独立 `011-scheduled-task-management` 走 specify → clarify → plan → tasks → analyze → implement → verify → analyze。009/010 保留原验收历史。按 D28-01–04 同步事实源、沿用 Profile.schedules；新增两表、四接口与定时管理页。默认无 key 的 ScheduledTaskE2ETest 和真模型 SchedulerFlowIT、独立进程 RestartRecoveryIT 分别留证据，顺序天气链路按三次 LLM/两次 Tool 对账。核实本地锁定依赖，不新建 Maven 模块或升级依赖；实现/测试由主模型执行。tasks 后交用户审阅，不自动提交或推送。见[028 范围记录](decisions/028-scheduler-subsystem-preflight.md)。
+
 > 第 27 节实施纪律（2026-09-06）：串联课复用 010 台账，不创建新 feature。按用户批准的 D27-01/02/03 适配会话分页、工作区根与显式 Bootstrap 失败语义；只替换模型的 `MockProviderFlowTest`/`MockAgentE2ETest` 进入默认门禁，`HumanTriggerFlowIT` 用 integration 标签执行真实 Provider/天气、失败审计与跨会话记忆。前端需 `npm ci` 后构建进 JAR，风格以 website 实际源码为准。来源、对账和任务见[第 27 节记录](../specs/010-web-service-admin/lesson27-preflight.md)。
 
 > 007补充实施纪律（2026-08-31）：用户批准最小官方SDK安全补丁回移，先执行新增T076–T079的来源锁、红绿测试、可重复构建和原始扫描/补丁处置证明，再继续暂存机制。用户最新确认所有代码、测试及回归均由主模型承担，不再调度Spark；具体验收见[SDK安全回移契约](../specs/007-memory-backends/contracts/sdk-security-backport.md)。

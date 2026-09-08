@@ -142,8 +142,16 @@ class MockAgentE2ETest {
                 assertThat(Path.of((String) row.get("file")).toRealPath())
                     .isEqualTo(root.resolve("oryxos.db").toRealPath()));
     assertThat(data(request("GET", "/api/v1/profiles", null))).hasSize(1);
-    assertThat(context.getBeansOfType(org.springframework.data.repository.Repository.class))
-        .hasSize(4);
+    // 011 新增两张定时表后,仓储集合显式扩为六个(保留旧四个必需仓储的检查语义)
+    assertThat(
+            context.getBeansOfType(org.springframework.data.repository.Repository.class).keySet())
+        .containsExactlyInAnyOrder(
+            "sessionRepository",
+            "llmCallRepository",
+            "toolInvocationRepository",
+            "memoryEntryRepository",
+            "scheduledTaskRepository",
+            "taskExecutionRepository");
   }
 
   @Test

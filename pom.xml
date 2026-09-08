@@ -259,6 +259,15 @@
                     <configuration>
                         <!-- 默认不运行进程冒烟；显式执行时必须同时覆盖排除组，避免零用例假绿。 -->
                         <excludedGroups>${test.excludedGroups}</excludedGroups>
+                        <!-- 默认 include 不覆盖 *IT 命名;补上让无 integration 标签的装配冒烟
+                             (WebSmokeIT) 进入默认测试组,带 integration 标签的仍按组排除。 -->
+                        <includes>
+                            <include>**/Test*.java</include>
+                            <include>**/*Test.java</include>
+                            <include>**/*Tests.java</include>
+                            <include>**/*TestCase.java</include>
+                            <include>**/*IT.java</include>
+                        </includes>
                         <!-- Mockito's inline mock maker needs self-attach; JDK 21 restricts it. -->
                         <argLine>-Djdk.attach.allowAttachSelf=true -XX:+EnableDynamicAgentLoading</argLine>
                     </configuration>

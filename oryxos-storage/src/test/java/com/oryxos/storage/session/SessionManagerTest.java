@@ -44,7 +44,7 @@ class SessionManagerTest {
     DataSource dataSource() {
       return DataSourceBuilder.create()
           .driverClassName("org.sqlite.JDBC")
-          .url("jdbc:sqlite:target/test-sessions-" + UUID.randomUUID() + ".db")
+          .url("jdbc:sqlite:target/test-sessions-" + UUID.randomUUID() + ".db?busy_timeout=5000")
           .build();
     }
   }

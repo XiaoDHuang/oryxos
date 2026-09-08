@@ -2,7 +2,7 @@
 name: oryxos-admin-ui
 description: >-
   生成或扩展 OryxOS 管理台（/admin）页面：Vue 3 + Vite 单页应用，视觉钉死官网首页设计 token
-  （深色 + 橙色强调、Inter/JetBrains Mono），只读、只调 /api/v1。当用户要求"做管理台页面 /
+  （深色 + 橙色强调、Inter/JetBrains Mono），默认只读、支持已批准的定时管理操作、只调 /api/v1。当用户要求"做管理台页面 /
   给管理台加页 / 改管理台样式 / admin console / 管理平台 UI"时使用。
 ---
 
@@ -42,7 +42,7 @@ description: >-
 - 所有数据请求只打 `/api/v1/**`（同源，不硬编码 host）；统一 fetch 封装：解成功信封
   `{code,message,data,timestamp}`（取 `data`）；非 2xx 读错误信封 `{errorCode,message,timestamp}`
   并把 `message` 抛给页面显示。
-- 整站**只读**：禁止出现任何新建/编辑/删除按钮或表单提交；如端点暂缺（如写操作），不做假按钮。
+- 已交付五页保持只读。2026-09-07 用户批准 011 的定时页例外：允许立即执行、启用/停用；不扩展成任务定义 CRUD。依据 `docs/decisions/028-scheduler-subsystem-preflight.md`。对应真实端点完成后才接按钮，不做假数据；请求期间禁止重复提交，失败明确展示，不自动重放立即执行。
 - SPA 路由用 history 模式；Spring 侧已对 `/admin/**` 未命中路径回落 `index.html`，子路由刷新不 404。
 - 顶栏放 `/admin/logo.svg`（工程 `public/logo.svg`，源自 `website/public/logo.svg`）+ 文字「OryxOS 管理台」。
 
@@ -64,6 +64,10 @@ description: >-
 | Tool 列表 | `/tools` | `GET /api/v1/tools` |
 | 长期记忆 | `/memory` | `GET /api/v1/memory`（`content` 用等宽 `<pre>` 呈现） |
 | 运行状态 | `/status` | `GET /api/v1/info` + `GET /api/v1/health` |
+| 定时任务 | `/schedules` | `GET /api/v1/schedules`、`GET /api/v1/schedules/{id}/executions`、`POST /api/v1/schedules/{id}/run`、`PUT /api/v1/schedules/{id}` |
+
+**唯一写操作例外（011 范围批准）**：定时任务页允许行级"立即执行"（POST run）与"启停"（PUT enabled）两个操作；其余页面保持整站只读。该页必须遵守：行级 submitting 防重复点击；操作成功后刷新列表与历史，不只乐观改 UI；业务失败（200 + success=false）显示失败结果，不显示"执行成功"；超时/失联显示"执行结果需通过历史确认"，不自动重发 POST。
+| 定时任务（011 计划，未交付） | `/schedules` | `GET /api/v1/schedules`、`GET /api/v1/schedules/{id}/executions`、`POST /api/v1/schedules/{id}/run`、`PUT /api/v1/schedules/{id}` |
 
 新增页面时：路由挂进导航，端点必须已存在于 `/api/v1`（缺端点先停下报告，不造数据）。
 
@@ -71,7 +75,7 @@ description: >-
 
 - [ ] token 值与本文件表格一致（无自创色值/字体/圆角）
 - [ ] `base: '/admin/'` 且产物落 `static/admin/`；`npm ci && npm run build` 一次通过
-- [ ] 五页全部三态齐备；整站 0 个写操作入口
+- [ ] 原五页三态齐备且只读；011 定时页具备三态、真实执行/启停操作及失败反馈，无额外写入口
 - [ ] 窄屏导航可收起；表格/字体/边框与官网气质一致
 - [ ] 子路由（如 `/admin/sessions`）刷新由 SPA 回落承载，不 404
 - [ ] 所有请求只打 `/api/v1/**`，错误页显示错误信封 message

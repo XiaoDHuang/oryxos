@@ -1,0 +1,8 @@
+# 运行时产物不入库:手工验证生成的数据库/日志/进程标记
+oryxos.db
+oryxos.db-journal
+oryxos.db-wal
+oryxos.db-shm
+*.log
+.server.pid
+.receiver.pid

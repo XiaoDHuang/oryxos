@@ -42,13 +42,15 @@ $ARGUMENTS
 
 | N | 课型 | 处理 |
 |---|---|---|
-| 16,17,18,19,20,22,24,25,26,29,30 | 代码课 | 走完整流程（第 1~7 步） |
+| 16,17,18,19,20,22,24,25,26,28,29,30 | 代码课 | 走完整流程（第 1~7 步）；28 按下述已批准范围处理 |
 | 21,23 | 评审课 | 拒绝并说明：这节不产码，是下一节（22/24）的 specify 素材 |
-| 27,28 | 串联课 | 特殊模式：不开新 feature，逐条执行该节课件的对账清单，并把对账固化成课件建议的 `@Tag("integration")` 测试类（27→`HumanTriggerFlowIT`；28→`SchedulerFlowIT`/`RestartRecoveryIT`），然后出报告 |
+| 27 | 串联课 | 特殊模式：不开新 feature，逐条执行课件对账清单，固化 `HumanTriggerFlowIT`（integration）与课件点名的无 key 测试，然后出报告 |
 | 31 | Demo 课 | 特殊模式：按课件定义 `weather-daily`（走 30 节 API）与 `daily-tech-digest`（走手写文件）两个 Agent，完成调试对账与发布清单，不做常规模块开发 |
 | 其他 | — | 报错：仅支持 16~31 |
 
 ## 第 1 步：H0 开工纪律——必读与依赖检查
+
+第 28 节新版范围已于 2026-09-07 获用户确认，见 `docs/decisions/028-scheduler-subsystem-preflight.md` 的 D28-01–04：由独立 `011-scheduled-task-management` 承接两表、四端点与管理台定时页；定义仍读 `Profile.schedules`，不提前实现第 29 节作者格式。天气→推送→收尾按三次 LLM、两次 Tool 对账。复用 009/010 原交付，不重写其历史验收。默认 gate 包含 `ScheduledTaskE2ETest`；真链路和重启由 `SchedulerFlowIT` / `RestartRecoveryIT`（integration）承载。
 
 1. **读三样**（用 Read 完整读，不凭记忆）：
    - 当节课件：`docs/class/第{N}节*.md`（glob 匹配）；
@@ -73,7 +75,8 @@ $ARGUMENTS
 | 26 | §7（Web Service） |
 | 29 | §11.1~11.2（Skill+Profile、运行时注册） |
 | 30 | §11.3~11.4（AgentLifecycleService、/api/v1/agents） |
-| 27/28/31 | §12（关键流程/两个 Demo） |
+| 28 | §7.3（011 例外）、§8.5、§9.2、§10、§12（调度状态/历史/管理与综合验收） |
+| 27/31 | §12（关键流程/两个 Demo） |
 
 ## 第 2 步：组装并执行 /speckit-specify
 
@@ -116,6 +119,7 @@ $ARGUMENTS
 | 24 | sandbox 包→oryxos-tool |
 | 25 | `AgentScheduler`/`ScheduleConfig`→oryxos-core |
 | 26 | Controller/异常处理/static-admin→oryxos-web |
+| 28 | ScheduledTaskStore/ScheduledTaskView/TaskExecutionView 与 AgentScheduler→oryxos-core；JpaScheduledTaskStore/两实体及仓储/迁移→oryxos-storage；ScheduleApiController/DTO/定时页→oryxos-web；综合测试→oryxos-boot |
 | 29 | 运行时注册方法→oryxos-core 既有类；示例 Skill/Profile→`.oryxos/` |
 | 30 | `AgentApiController`→oryxos-web；`AgentLifecycleService`→oryxos-core |
 

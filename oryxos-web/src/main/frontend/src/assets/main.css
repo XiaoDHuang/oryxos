@@ -282,6 +282,34 @@ pre.memory {
   color: var(--brand-1);
 }
 
+/* ─── 定时任务页行级操作(唯一经批准的写入口例外) ─── */
+.pager-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-2);
+  border-radius: 6px;
+  padding: 3px 10px;
+  margin-right: 6px;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.pager-btn:not(:disabled):hover {
+  border-color: var(--brand-2);
+  color: var(--brand-1);
+}
+
+.pager-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.row-error {
+  margin-top: 6px;
+  color: var(--fail);
+  font-size: 0.8rem;
+}
+
 /* ─── 窄屏:导航收起为顶部抽屉 ─── */
 .table-scroll {
   overflow-x: auto;

@@ -1,0 +1,24 @@
+name: weather
+description: 手工验证:真实天气定时任务(3 LLM + 2 Tool 严格脚本)与 cron 恢复证明
+provider:
+  name: deepseek
+  model: deepseek-chat
+  temperature: 0
+tools: [http_get, notify]
+notify_channels:
+  - type: webhook
+    url: http://localhost:18099/hook
+schedules:
+  # 主任务:闰日才到点,只供手动 run/启停,不与 cron 干扰
+  - id: task-weather
+    cron: "0 0 0 29 2 *"
+    zone: Asia/Shanghai
+    message: "严格按顺序执行且每步只调一个工具:第一步调用 http_get 获取北京天气(url: https://api.open-meteo.com/v1/forecast?latitude=39.9042&longitude=116.4074&current=temperature_2m);第二步调用 notify 把刚才查到的气温推送到已配置渠道;第三步直接文字回复已完成。"
+  # 恢复证明任务:每 30 秒真实到点,用于"恢复许可后下一真实 cron 成功"
+  - id: task-tick
+    cron: "*/30 * * * * *"
+    zone: Asia/Shanghai
+    message: "调用 notify 推送'心跳'两个字,然后一句话回复完成。"
+settings:
+  max_iterations: 8
+  max_history_turns: 20

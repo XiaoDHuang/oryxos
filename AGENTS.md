@@ -5,6 +5,8 @@
 跨工具目录与 Skills 说明见 [`.agents/README.md`](.agents/README.md)。
 ## 项目现状
 
+第 28 节新版范围已于 2026-09-07 获用户批准，独立 feature `011-scheduled-task-management`，分支 `028-lesson28-scheduler-management`，实现已完成并过全量门禁：新增两张定时状态/历史表（scheduled_tasks/task_executions，UTC epoch 毫秒）、core `ScheduledTaskStore` 端口与双视图、storage `JpaScheduledTaskStore`（begin/finish 条件终态、recoverInterrupted 标 unknown）、AgentScheduler 改造（虚拟 worker、watchdog 60s 截止、runNow/setEnabled/isRegistered、任务锁+Profile 锁+短准入互斥）、ReActLoop 工具结果 `oryxos.tool.success` 元数据与中断检查点、装配迁移为上下文初始化后"先恢复再注册"、ScheduleApiController 四接口及管理台定时写操作页（唯一经批准的写入口）。验收证据见 `specs/011-scheduled-task-management/acceptance.md`；真模型链路 `SchedulerFlowIT` 因本机 DEEPSEEK_API_KEY 无效（401，curl 同证）未放行，待有效 key 重跑。规则仍来自 Profile.schedules，Skill 只作业务上下文。旧五页只读、website 风格、九模块基线保持。顺序天气验收为三次 LLM/两次 Tool；详见 `docs/decisions/028-scheduler-subsystem-preflight.md`。任务定义 CRUD/动态 Agent 创建仍待后续范围批准。
+
 开发启停入口为 `bin/start.sh [后端端口=8080] [前端端口=5173]` / `bin/stop.sh`（Linux Bash、Windows Git Bash）：serve 后端 + Vite Manager 两个进程，前端访问 `5173/admin/`，Vue/CSS 热更新，`/api` 代理到所选后端端口。后端读取 `config/application.yml`，DeepSeek key 通过 YAML 占位与根 `.env` 注入，前端不继承脚本加载的 DeepSeek 凭证。两个进程固定本机监听，各自 PID/日志放忽略的 `.run/dev-server/`，校验启动标记后才停止；启动失败只清理本次新进程，保留工作区。Java 变更仍须重建 JAR；发布仍为单 JAR 托管构建后的静态管理台。
 
 第 27 节人推串联已在 `027-lesson27-human-trigger` 完成验收，复用 010 台账 T029–T041：默认测试 441/441、真模型 HumanTriggerFlowIT 2/2、显式 WebSmokeIT 6/6，完整 verify 含 OWASP 通过；实际 JAR 管理台桌面/手机检查通过。新增显式 `mock` Provider（无 key、usage 为合成值）、统一 `oryxos.root`（默认 `.oryxos`）与显式 Bootstrap 缺失失败；管理台详情只读并以 website 实际风格为准。真实常驻装配与 Mem0 测试夹具隔离缺口已修复，未改变 Mem0 生产传输或核心端口。证据见 `specs/010-web-service-admin/lesson27-acceptance.md`；尚未提交/推送，第 28 节调度综合验收另行推进。

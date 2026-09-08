@@ -7,6 +7,11 @@
   <suppress checks="AbbreviationAsWordInName" files="ProviderSmokeIT\.java"/>
   <!-- Courseware-mandated harness class name(26 节);本类无外部依赖、默认组执行,IT 仅为课件既定字面量。 -->
   <suppress checks="AbbreviationAsWordInName" files="WebSmokeIT\.java"/>
+  <!-- 011 定时链路验收类名:IT 为进程冒烟/集成标记(默认 integration 组显式执行)。 -->
+  <suppress checks="AbbreviationAsWordInName" files="RestartRecoveryIT\.java"/>
+  <suppress checks="AbbreviationAsWordInName" files="ScheduledTaskE2ETest\.java"/>
+  <suppress checks="AbbreviationAsWordInName" files="SchedulerFlowIT\.java"/>
+  <suppress checks="AbbreviationAsWordInName" files="SchedulerTimeoutIT\.java"/>
   <!-- 第 27 节指定类名;只豁免名称缩写,不改变 integration 标签或任何行为断言。 -->
   <suppress checks="AbbreviationAsWordInName" files="HumanTriggerFlowIT\.java"/>
   <suppress checks="AbbreviationAsWordInName" files="MockAgentE2ETest\.java"/>

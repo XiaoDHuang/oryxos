@@ -6,6 +6,7 @@ import ProfilesView from './views/ProfilesView.vue'
 import ToolsView from './views/ToolsView.vue'
 import MemoryView from './views/MemoryView.vue'
 import StatusView from './views/StatusView.vue'
+import SchedulesView from './views/SchedulesView.vue'
 import './assets/main.css'
 
 // history 模式:Spring 侧对 /admin/** 未命中路径回落 index.html,子路由刷新不 404。
@@ -18,6 +19,7 @@ const router = createRouter({
     { path: '/tools', component: ToolsView },
     { path: '/memory', component: MemoryView },
     { path: '/status', component: StatusView },
+    { path: '/schedules', component: SchedulesView },
   ],
 })
 

@@ -12,6 +12,7 @@ import com.oryxos.core.react.ReActLoop;
 import com.oryxos.core.react.ToolExecutor;
 import com.oryxos.core.react.ToolInvocationAudit;
 import com.oryxos.core.schedule.AgentScheduler;
+import com.oryxos.core.schedule.ScheduledTaskStore;
 import com.oryxos.core.session.SessionManager;
 import com.oryxos.core.tool.OryxTool;
 import java.nio.file.Files;
@@ -22,12 +23,14 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
 /**
@@ -123,12 +126,41 @@ public class CoreEngineConfiguration {
   @ConditionalOnProperty(prefix = "oryxos.scheduler", name = "enabled", havingValue = "true")
   public AgentScheduler agentScheduler(
       ThreadPoolTaskScheduler taskScheduler,
+      SimpleAsyncTaskExecutor schedulerWorkerExecutor,
       ProfileRegistry profileRegistry,
       AgentService agentService,
-      SessionManager sessionManager) {
-    AgentScheduler scheduler =
-        new AgentScheduler(taskScheduler, profileRegistry, agentService, sessionManager);
-    scheduler.registerAll();
-    return scheduler;
+      SessionManager sessionManager,
+      ScheduledTaskStore scheduledTaskStore) {
+    return new AgentScheduler(
+        taskScheduler,
+        schedulerWorkerExecutor,
+        profileRegistry,
+        agentService,
+        sessionManager,
+        scheduledTaskStore);
+  }
+
+  /** 定时执行用的虚拟 worker 执行器:cron 线程只派发,引擎跑在 Spring 管理的虚拟线程上(宪法 VII). 关闭时取消残余线程并有界等待,不建固定池。 */
+  @Bean(destroyMethod = "close")
+  @ConditionalOnProperty(prefix = "oryxos.scheduler", name = "enabled", havingValue = "true")
+  SimpleAsyncTaskExecutor schedulerWorkerExecutor() {
+    SimpleAsyncTaskExecutor executor = new SimpleAsyncTaskExecutor("scheduler-worker-");
+    executor.setVirtualThreads(true);
+    executor.setTaskTerminationTimeout(5000L);
+    executor.setCancelRemainingTasksOnClose(true);
+    return executor;
+  }
+
+  /**
+   * 注册时机挪到上下文初始化完成之后:schema/Store 先就位,再恢复遗留 running 并安装 cron, 避免 JPA 写入早于数据库初始化(恢复只此一次,不在每次
+   * registerAll 误标在途任务).
+   */
+  @Bean
+  @ConditionalOnProperty(prefix = "oryxos.scheduler", name = "enabled", havingValue = "true")
+  SmartInitializingSingleton schedulerRegistrar(AgentScheduler agentScheduler) {
+    return () -> {
+      agentScheduler.recoverInterrupted();
+      agentScheduler.registerAll();
+    };
   }
 }

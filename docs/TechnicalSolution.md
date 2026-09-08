@@ -1,5 +1,7 @@
 # OryxOS 技术方案
 
+> 第 28 节范围决议（2026-09-07，用户已批准）：新增独立 011 定时任务持久化与管理，规则继续读取 Profile.schedules；以下 §7.3、§8.5、§9.2、§10、§12 的 011 补充是本次生效边界，011 已实现并通过全量门禁（验收证据见 specs/011-scheduled-task-management/acceptance.md；真模型链路因本机 DeepSeek key 无效待重跑）。依据见[028 决议](decisions/028-scheduler-subsystem-preflight.md)。
+
 > 007实施进度（2026-09-03）：Docker恢复后完成T080部署补救，实际64/80；Python unit377/377、PG集成65/65、真实容器HTTPS/SDK/PG用例8/8通过，源码与真实镜像已绑定。T049镜像安全门禁仍失败，T061缺获准内网模型/embedding，Mem0不可启用；不豁免未处置告警。详见[验收台账](../specs/007-memory-backends/acceptance.md)。
 
 > **007安全回移决议（2026-08-31已批准）**：Mem0 1.0.11固定源码保留，仅回移官方CVE-2026-7597的FAISS补丁，构建诚实标识的1.0.11+oryx.1 wheel；不启用FAISS、不改变提炼算法或Maven模块。源码与wheel摘要、反序列化回归及来源绑定的扫描处置见[SDK安全回移契约](../specs/007-memory-backends/contracts/sdk-security-backport.md)。原始扫描仍保留，未知告警不放行；全部回归由主模型执行。
@@ -451,6 +453,8 @@ Web Service 是 OryxOS 的对外完整门面，业务系统通过 REST API 接�
 
 ### 7.3 扩展阶段补齐的端点
 
+**011 已批准的核心例外（2026-09-07）**：`GET /api/v1/schedules`、`GET /api/v1/schedules/{id}/executions`、`POST /api/v1/schedules/{id}/run`、`PUT /api/v1/schedules/{id}` 由 ScheduleApiController 提供；PUT 仅启停，POST 只运行已登记的配置。管理台 `/admin/schedules` 提供列表、历史、立即执行及启停；原五页只读。成功/错误复用当前信封。任务定义 CRUD、修改 cron/message、Skill 上传、Profile 动态创建与免重启注册仍属于下述扩展能力。
+
 Profile 的 show/reload/create/update/delete；**`SKILL.md` 的上传/查看/更新/删除**（业务方通过 API 而不是手动上传文件到 `.oryxos/skills/` 来创建新 Skill，跟 Profile create 是同一批扩展阶段能力，两者结合起来才是"纯 API 定义一个新 Agent"的完整闭环）；Memory 的 append/clear/search；Tool describe 和调用历史；LLM call 历史和 token 统计；**`AgentScheduler` 的调度管理**（增删查改某个 Agent 的 `schedules` 配置，不用改 YAML 文件重启进程）；Webhook 触发；SSE 流式响应；Prometheus metrics；OpenAPI spec。
 
 > **核心阶段为什么不做：** 核心阶段"用 SKILL.md 定义一个 Agent"的路径是业务方手写 `.oryxos/skills/*.md` 加 `.oryxos/profiles/*.yaml` 两个文件、重启或热加载生效（`ContextLoader` 每次组装 prompt 都重新读取，不需要重启也能生效，见 8.3），Web Service 核心阶段的 Profile/Tool 端点都只做查询，不做创建，这跟"业务系统通过 API 动态创建新 Agent"是两件事——后者需要 Skill 上传接口、Profile 创建接口、`AgentScheduler` 的运行时增删接口三者一起补齐，任何一个缺了这条链路都不完整，所以放在同一批扩展阶段一起做，不拆开先做一半。
@@ -526,6 +530,8 @@ Channel 是 Agent 对外的消息接入入口，主要解决"消息进来、响�
 
 ### 8.5 定时任务（第三种触发源）
 
+**011 持久化与管理增量（已批准，已实现）**：AgentScheduler 通过 core 的 ScheduledTaskStore 端口持久化登记/状态/历史，storage 提供 JpaScheduledTaskStore。注册不重置用户停用状态或执行次数；停用任务的自动触发直接跳过，不记执行历史；runNow(taskId) 无视启用开关，但遵守防重叠约束。一次真实执行的成功、失败均记账，不以 LLM 返回普通答复替代通知成功的证明。保留 `(scheduler,scheduler,profileName)` 与统一 AgentService.process。任务定义仍是 Profile YAML，Skill 是 prompt 资产，第 29 节如扩展作者格式也须派生到同一 Profile。本节实例/进程重启验收，不涉及计算机重启。
+
 定时任务不是新增的核心能力，而是给 `AgentService` 加第三条触发路径。CLI 和 Web Service 都是"人推"——需要有人发起一次调用；`AgentScheduler` 是"钟推"——按 cron 表达式到点自动生成一条消息，调用链路跟人推完全一样，`ReActLoop` 不感知消息从哪个入口来。
 
 ![定时任务是第三种触发源：CLI/Web Service（人推）和 AgentScheduler（钟推）都调同一个 AgentService](../website/public/images/docs-scheduler.svg)
@@ -594,6 +600,8 @@ session list
 
 ### 9.2 SQLite 关系型数据
 
+**011 增表（已批准，已实现）**：`scheduled_tasks` 保存 task_id、profile_name、cron、zone、message、enabled、next_run_at、last_run_at、last_status、run_count；`task_executions` 保存每次执行的 task_id、session_id、started_at、success、error_message、duration_ms。历史行的独立主键及运行中/中断状态表示、约束与索引由 011 data-model 锁定。手工幂等增表，旧 Session/审计/Memory 表不重建，任务终态和计数需事务一致；不得把完成验收与执行中崩溃的 exactly-once 混为一谈。
+
 通过 Spring Data JPA 集成，`application.yaml` 配置数据源指向 `.oryxos/oryxos.db`。
 
 > **工程风险提示：** SQLite 表结构创建和演进一律使用手工脚本或显式迁移工具，禁止依赖 `hibernate.ddl-auto=update`。007 增表必须验证旧库升级与重复启动，不得重建或破坏既有 Session/审计表。
@@ -638,6 +646,8 @@ session list
 ---
 
 ## 10. 项目工程结构
+
+011 在九模块内增量落位：core 的 `schedule` 包增加 ScheduledTaskStore / ScheduledTaskView / TaskExecutionView 并改造既有 AgentScheduler；storage 增加 JPA 实体 ScheduledTask / TaskExecution、仓储、JpaScheduledTaskStore 和手工 schema 增量；web 增加 ScheduleApiController、DTO 和定时任务页面；boot 放综合验收。允许必要的既有装配点改造；不迁移现有模块职责，不建立 core→storage/web 依赖。
 
 OryxOS 核心阶段以 9 个 Maven 模块为默认工程基线：
 
@@ -720,6 +730,12 @@ mvn clean package
 # 第三部分：整合与验证
 
 ## 12. 关键流程
+
+### 第 28 节实施映射（2026-09-07 用户确认）
+
+新版课件由 011 承接持久化调度管理，见 §8.5。ScheduledTaskE2ETest 无 key 验证登记→执行→记忆与审计→历史→启停；SchedulerFlowIT 真模型/天气/测试 webhook；RestartRecoveryIT 用独立进程和同一临时工作区核对重启，另验多 Profile 工具/会话/调度隔离、超时及 MCP 启动容错。实际执行证据与后续企业 Demo 环境人工检查分别记录。
+
+天气成功链路固定为第一轮 http_get、第二轮根据返回天气生成 notify、第三轮无 Tool 收尾，即三次 LLM、两次 Tool。这是用户批准的课件计数修正，不同时生成依赖尚未拿到的天气结果的通知。失败链路独立核对拒绝审计与后续触发，不套成功路径的固定计数。
 
 ### 第 27 节串联的实施映射（2026-09-06 用户确认）
 

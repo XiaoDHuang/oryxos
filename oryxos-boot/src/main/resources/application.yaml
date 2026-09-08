@@ -36,7 +36,8 @@ spring:
     open-in-view: false
     defer-datasource-initialization: true
   datasource:
-    url: jdbc:sqlite:${oryxos.root:.oryxos}/oryxos.db
+    # 同一工作区 SQLite 单写者;并发定时/会话写短暂竞争时 busy_timeout 让写方有界等待而非立刻失败
+    url: jdbc:sqlite:${oryxos.root:.oryxos}/oryxos.db?busy_timeout=5000
     driver-class-name: org.sqlite.JDBC
   sql:
     init:

@@ -1,0 +1,15 @@
+name: slowpoke
+description: 手工验证:真实 60 秒超时链路(慢对端 http_get)
+provider:
+  name: deepseek
+  model: deepseek-chat
+  temperature: 0
+tools: [http_get]
+schedules:
+  - id: task-slow
+    cron: "0 0 0 29 2 *"
+    zone: Asia/Shanghai
+    message: "调用 http_get 拉取 http://localhost:18098/slow (url 参数就是它),然后一句话回复。"
+settings:
+  max_iterations: 5
+  max_history_turns: 20

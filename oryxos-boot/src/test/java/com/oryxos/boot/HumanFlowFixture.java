@@ -84,7 +84,7 @@ final class HumanFlowFixture {
         .withPropertyValues(
             "oryxos.root=" + root,
             "memory.backend=markdown",
-            "spring.datasource.url=jdbc:sqlite:" + root.resolve("oryxos.db"),
+            "spring.datasource.url=jdbc:sqlite:" + root.resolve("oryxos.db") + "?busy_timeout=5000",
             "spring.datasource.driver-class-name=org.sqlite.JDBC",
             "spring.jpa.database-platform=org.hibernate.community.dialect.SQLiteDialect",
             "spring.jpa.hibernate.ddl-auto=none",

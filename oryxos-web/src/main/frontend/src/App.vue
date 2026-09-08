@@ -11,6 +11,7 @@ const items = [
   { to: '/profiles', label: 'Profile 列表' },
   { to: '/tools', label: 'Tool 列表' },
   { to: '/memory', label: '长期记忆' },
+  { to: '/schedules', label: '定时任务' },
   { to: '/status', label: '运行状态' },
 ]
 </script>

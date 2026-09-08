@@ -161,6 +161,120 @@ class ReActLoopTest {
     verify(toolExecutor, times(2)).execute(any(), any());
   }
 
+  @Test
+  @DisplayName("工具结果携带本轮成败元数据_成功为true失败为false")
+  void toolResponse_carriesSuccessMetadata() {
+    AssistantMessage.ToolCall call =
+        new AssistantMessage.ToolCall("c-1", "function", "http_get", "{}");
+    ChatResponse withCall = responseWithToolCall(call);
+    ChatResponse finalText = responseWithText("收尾");
+    when(llmGateway.chat(any(), any(), any())).thenReturn(withCall).thenReturn(finalText);
+    when(toolExecutor.execute(any(), any())).thenReturn(ToolResult.ok("http_get", "sunny"));
+
+    loop.run(session, "查天气", profileWithMaxIterations(10));
+
+    ToolResponseMessage toolMessage = onlyToolResponse();
+    assertThat(toolMessage.getMetadata()).containsEntry("oryxos.tool.success", true);
+  }
+
+  @Test
+  @DisplayName("工具失败后模型回了普通文本_失败仍可由元数据识别")
+  void toolFailureFollowedByPlainReply_stillClassifiableAsFailure() {
+    AssistantMessage.ToolCall call =
+        new AssistantMessage.ToolCall("c-1", "function", "http_get", "{}");
+    ChatResponse withCall = responseWithToolCall(call);
+    ChatResponse finalText = responseWithText("抱歉,没查到");
+    when(llmGateway.chat(any(), any(), any())).thenReturn(withCall).thenReturn(finalText);
+    when(toolExecutor.execute(any(), any())).thenReturn(ToolResult.fail("http_get", "超时", false));
+
+    String reply = loop.run(session, "查天气", profileWithMaxIterations(10));
+
+    assertThat(reply).isEqualTo("抱歉,没查到");
+    assertThat(onlyToolResponse().getMetadata()).containsEntry("oryxos.tool.success", false);
+  }
+
+  @Test
+  @DisplayName("工具正文以ERROR开头_不误判成败元数据")
+  void errorPrefixedContent_doesNotAffectMetadata() {
+    AssistantMessage.ToolCall call =
+        new AssistantMessage.ToolCall("c-1", "function", "http_get", "{}");
+    ChatResponse withCall = responseWithToolCall(call);
+    ChatResponse finalText = responseWithText("收尾");
+    when(llmGateway.chat(any(), any(), any())).thenReturn(withCall).thenReturn(finalText);
+    // 正文内容以 ERROR 开头但调用本身成功:元数据必须按 ToolResult 记 true,不解析文本
+    when(toolExecutor.execute(any(), any()))
+        .thenReturn(ToolResult.ok("http_get", "ERROR: city not found"));
+
+    loop.run(session, "查天气", profileWithMaxIterations(10));
+
+    assertThat(onlyToolResponse().getMetadata()).containsEntry("oryxos.tool.success", true);
+  }
+
+  @Test
+  @DisplayName("轮数耗尽时_尾消息是ToolResponse")
+  void maxIterationsExhausted_tailMessageIsToolResponse() {
+    AssistantMessage.ToolCall call =
+        new AssistantMessage.ToolCall("c-1", "function", "http_get", "{}");
+    ChatResponse withCall = responseWithToolCall(call);
+    when(llmGateway.chat(any(), any(), any())).thenReturn(withCall);
+    when(toolExecutor.execute(any(), any())).thenReturn(ToolResult.ok("http_get", "data"));
+
+    String reply = loop.run(session, "查天气", profileWithMaxIterations(1));
+
+    assertThat(reply).contains("达到最大轮数");
+    assertThat(session.messages().getLast()).isInstanceOf(ToolResponseMessage.class);
+  }
+
+  @Test
+  @DisplayName("中断后不再发起新的LLM或Tool调用")
+  void interrupt_stopsNewActions() {
+    AssistantMessage.ToolCall call =
+        new AssistantMessage.ToolCall("c-1", "function", "http_get", "{}");
+    ChatResponse withCall = responseWithToolCall(call);
+    ChatResponse finalText = responseWithText("不该到达");
+    when(llmGateway.chat(any(), any(), any())).thenReturn(withCall).thenReturn(finalText);
+    when(toolExecutor.execute(any(), any()))
+        .thenAnswer(
+            invocation -> {
+              // 模拟 watchdog 在工具返回后掐断:循环不得再发起下一轮 LLM
+              Thread.currentThread().interrupt();
+              return ToolResult.ok("http_get", "data");
+            });
+
+    String reply;
+    try {
+      reply = loop.run(session, "查天气", profileWithMaxIterations(10));
+    } finally {
+      // 清掉中断标记,不污染同线程后续测试
+      Thread.interrupted();
+    }
+
+    verify(llmGateway, times(1)).chat(any(), any(), any());
+    assertThat(reply).contains("中断");
+  }
+
+  @Test
+  @DisplayName("起点即中断_零LLM零Tool")
+  void interruptedBeforeStart_zeroCalls() {
+    Thread.currentThread().interrupt();
+    try {
+      loop.run(session, "查天气", profileWithMaxIterations(10));
+    } finally {
+      Thread.interrupted();
+    }
+
+    verify(llmGateway, never()).chat(any(), any(), any());
+    verify(toolExecutor, never()).execute(any(), any());
+  }
+
+  private ToolResponseMessage onlyToolResponse() {
+    return (ToolResponseMessage)
+        session.messages().stream()
+            .filter(message -> message instanceof ToolResponseMessage)
+            .findFirst()
+            .orElseThrow();
+  }
+
   private static ChatResponse responseWithText(String text) {
     return new ChatResponse(List.of(new Generation(new AssistantMessage(text))));
   }

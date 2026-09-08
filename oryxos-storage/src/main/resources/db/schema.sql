@@ -55,3 +55,30 @@ CREATE TABLE IF NOT EXISTS memory_entries (
 );
 
 CREATE INDEX IF NOT EXISTS idx_memory_scope ON memory_entries(scope);
+
+-- 011 仅追加定时任务状态/历史两表,时间为 UTC epoch 毫秒(INTEGER),不动旧四表。
+CREATE TABLE IF NOT EXISTS scheduled_tasks (
+    task_id         TEXT PRIMARY KEY NOT NULL,
+    profile_name    TEXT NOT NULL,
+    cron            TEXT NOT NULL,
+    zone            TEXT NOT NULL,
+    message         TEXT NOT NULL,
+    enabled         INTEGER NOT NULL CHECK (enabled IN (0, 1)),
+    next_run_at     INTEGER,
+    last_run_at     INTEGER,
+    last_status     TEXT CHECK (last_status IN ('running', 'success', 'failed', 'timeout', 'unknown')),
+    run_count       INTEGER NOT NULL DEFAULT 0 CHECK (run_count >= 0)
+);
+
+CREATE TABLE IF NOT EXISTS task_executions (
+    execution_id    INTEGER PRIMARY KEY AUTOINCREMENT,
+    task_id         TEXT NOT NULL REFERENCES scheduled_tasks(task_id),
+    session_id      TEXT NOT NULL,
+    started_at      INTEGER NOT NULL,
+    success         INTEGER CHECK (success IN (0, 1)),
+    error_message   TEXT,
+    duration_ms     INTEGER CHECK (duration_ms >= 0)
+);
+
+CREATE INDEX IF NOT EXISTS idx_task_executions_task_started
+    ON task_executions(task_id, started_at DESC, execution_id DESC);

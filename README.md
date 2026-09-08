@@ -305,6 +305,8 @@ OryxOS 通过命令行工具完成主要操作，核心阶段共 12 个命令。
 
 010 另已交付 `GET /api/v1/sessions?page=0&size=20`，按最后活跃倒序返回摘要，size 最大 100；详情的 `totalMessages` 提供消息总数。既有 `7b1eceb` 还提供三项运行时白名单操作：`GET /api/v1/sandbox/whitelist`、`POST /api/v1/sandbox/whitelist/entries`、`DELETE /api/v1/sandbox/whitelist/entries`。白名单只在进程内即时生效，重启回配置基线；管理台保持只读。
 
+011（第 28 节）交付定时任务的持久化状态与运行管理：`GET /api/v1/schedules`（任务列表，含 `enabled` 持久化开关与 `available` 当前可运行派生）、`GET /api/v1/schedules/{id}/executions?page=0&size=20`（执行历史分页，size≤100，`executionId` 按字符串输出）、`POST /api/v1/schedules/{id}/run`（立即执行并等待本次终态；业务失败返回 200 + `success=false` + 固定错误分类，超时为 504，`success=false` 时不能把 HTTP 200 当作业务成功）、`PUT /api/v1/schedules/{id}`（只接 `{"enabled": boolean}`，其他字段一律 400）。任务定义仍只来自 Profile 的 `schedules`，本组接口不提供任务创建/删除/cron 编辑。管理台新增"定时任务"页（唯一带写操作的页面：行级立即执行与启停，其余页面只读）。
+
 ---
 
 ## 安全设计
