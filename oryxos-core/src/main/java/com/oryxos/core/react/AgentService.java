@@ -4,6 +4,7 @@ import com.oryxos.core.profile.Profile;
 import com.oryxos.core.profile.ProfileRegistry;
 import com.oryxos.core.session.Session;
 import com.oryxos.core.session.SessionManager;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 /**
  * 三类触发来源(CLI / Web / 调度器)共享的唯一入口. 编排一个处理回合:把当前 Profile 植入请求级的 {@link ProfileContext}(工具从那里读取 ——
@@ -20,6 +21,9 @@ public class AgentService {
   private final SessionManager sessionManager;
 
   /** 以循环、profile 索引与会话存储创建编排器. */
+  @SuppressFBWarnings(
+      value = "EI_EXPOSE_REP2",
+      justification = "协作者是 Spring 容器管理的单例 Bean,编排器的本职就是持有并驱动它们,防御性拷贝反而语义错误。")
   public AgentService(
       ReActLoop reActLoop, ProfileRegistry profileRegistry, SessionManager sessionManager) {
     this.reActLoop = reActLoop;

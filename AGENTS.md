@@ -221,9 +221,12 @@ Provider、Memory、Tool 三个能力供养 ReAct 循环这个引擎，引擎跑
 
 `oryxos init` 创建：`profiles/`、`sessions/`、`skills/`、`logs/`、`tools/`、`memory/MEMORY.md`、`mcp_servers.yaml`、`AGENTS.md`、`SOUL.md`、`USER.md`、`oryxos.db`（SQLite）、`profiles/default.yaml`（默认 Profile）。默认 Profile 用最简配置让用户立刻可用：一个默认 LLM Provider + 几个基础 Tool + CLI Channel。
 
+29 节新增 `agents/`（不由 init 创建，扫描时缺失视为空）：一个子目录 = 一个 Agent（插件化作者路径）。`agents/<name>/AGENT.md` 的 frontmatter 是该 Agent 自带的 profile，启动扫描派生到同一 `Profile`、过与手写 YAML 同一套校验进 `ProfileRegistry`；正文每次触发现读注入，目录内 `REFERENCE.md`/`skills/`/`scripts/` 不预载、经底座 `read_file`/`shell` 按需取用。手写 `profiles/*.yaml` 与 Agent 目录两来源并存同规矩；同名时目录派生跳过不覆盖。
+
 ## 关键配置文件格式（实现加载器时对照，别自创字段）
 
 - **`SKILL.md`**：带 frontmatter（`name`、`description`、`trigger`、`required_tools`）+ 任务说明正文的 markdown。由 `oryxos-core` 的 `ContextLoader` 加载进 system prompt，**不是可执行 Tool**，OryxOS 不解析步骤、不做工作流引擎，一切交给 LLM 理解。Profile 用 `skills` 字段引用。
+- **`agents/<name>/AGENT.md`**（29 节）：frontmatter（与 Profile YAML 同构的 snake_case 键：`name`/`provider`/`tools`/`notify_channels`/`schedules` 等）+ 正文（任务指令）的 markdown。由 `oryxos-core` 的 `AgentLoader` 解析并派生到同一 `Profile`，不是第二套运行时模型；正文经 `ContextLoader` 现读注入（去 frontmatter、无缓存）。可选资源 `REFERENCE.md`（参考）、`skills/*.md`（Agent 内部子指令）、`scripts/*`（脚本，产出进上下文、代码不进）。
 - **`mcp_servers.yaml`**：声明每个 MCP server 的 `name`、`transport`、`command`、`env`。OryxOS 启动时连接、调 `tools/list` 拿工具列表、包装成 `OryxTool` 注册进 `ToolRegistry`。Profile 用 `mcp_servers` 字段引用。核心阶段只做 stdio transport。
 - **`application.yaml`**：Provider 的 API key / base URL、Sandbox 白名单（`file.allowed_paths` / `shell.allowed_commands` / `http.allowed_domains`）、SQLite 数据源（指向 `.oryxos/oryxos.db`）；007 新增 `memory.backend`，Mem0 专属参数名和必填校验由 plan 锁定。
 

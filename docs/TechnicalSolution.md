@@ -699,6 +699,8 @@ mvn clean package
 
 这条路径核心阶段够用，但依赖手动改文件加重启（或触发 reload），不是"纯 API 定义一个 Agent"。
 
+**29 节新增第二条作者路径：Agent 目录（`.oryxos/agents/<name>/`）。** 一个自足目录 = 一个 Agent：主文件 `AGENT.md` 的 frontmatter（与 Profile YAML 同构键集，含 `schedules`）由 `AgentLoader` 派生到同一 `Profile`，与手写 YAML 过同一套校验进 `ProfileRegistry`，定时照旧由 `AgentScheduler` 注册；正文（任务指令）经 `ContextLoader` 每次触发现读注入（去 frontmatter、无缓存、改完即生效），目录内 `REFERENCE.md`/`skills/*.md`（Agent 内部子指令）/`scripts/*`（脚本）不预载，由模型按正文指引用底座 `read_file`/`shell` 按需取用，脚本只有产出进上下文。两条来源并存同规矩；同名时目录派生记错误日志跳过、不覆盖（同名策略属扩展阶段）。运行时注册机制（`ProfileRegistry.register/remove/exists`、`AgentScheduler.registerProfile` 与 cron 句柄表）已就位，为 11.3 的统一 API 铺路。脚本是任意代码、可自发网络请求绕过 HTTP 域名白名单——核心阶段只做解释器+目录两道白名单，安装带脚本的 Agent 即信任其作者；容器/网络隔离属扩展阶段。
+
 ### 11.3 扩展阶段：统一入口 `POST /api/v1/agents`
 
 业务系统要完全通过 API 定义一个新 Agent、不摸文件系统，需要把"写 Skill 文件"和"写 Profile 文件并注册"这两步打包成一个对外资源——**Agent**，而不是分别暴露 Skill 和 Profile 两套 CRUD 让业务方自己拼装。

@@ -1,5 +1,6 @@
 package com.oryxos.core.config;
 
+import com.oryxos.core.agent.AgentDirectoryScanner;
 import com.oryxos.core.context.ContextLoader;
 import com.oryxos.core.memory.MemoryService;
 import com.oryxos.core.profile.Profile;
@@ -56,20 +57,40 @@ public class CoreEngineConfiguration {
     return workspace;
   }
 
-  /** 加载全部 Profile 并建内存索引;全局 provider 名集合由 provider 模块按类型供入. */
+  /** 加载全部 Profile 并建内存索引;全局 provider 名集合由 provider 模块按类型供入,同时供运行时注册校验复用. */
   @Bean
   public ProfileRegistry profileRegistry(ObjectProvider<Set<String>> globalProviderNames) {
     Path workspace = requireWorkspace();
     Set<String> names = globalProviderNames.getIfAvailable(Set::of);
     List<Profile> profiles = new ProfileLoader(names).loadAll(workspace.resolve("profiles"));
     LOGGER.info("已加载 {} 个 Profile", profiles.size());
-    return new ProfileRegistry(profiles);
+    return new ProfileRegistry(profiles, names);
   }
 
   /** 上下文供给器:Bootstrap/Skill 文件每次现读,无缓存. */
   @Bean
   public ContextLoader contextLoader() {
     return new ContextLoader(requireWorkspace());
+  }
+
+  /**
+   * 启动扫描 {@code .oryxos/agents/}:逐目录"解析 → 派生 → 同一套校验 → 注册",有 schedules 的交给调度器(29 节). 工具表取不到(无 tool
+   * 模块)时传 null 跳过能力告警;chat 等模式无调度器 Bean 时传 null 跳过定时注册。
+   */
+  @Bean
+  public AgentDirectoryScanner agentDirectoryScanner(
+      ProfileRegistry profileRegistry,
+      @Qualifier("toolTable") ObjectProvider<Map<String, OryxTool>> toolTable,
+      ObjectProvider<AgentScheduler> agentScheduler) {
+    Map<String, OryxTool> table = toolTable.getIfAvailable();
+    AgentDirectoryScanner scanner =
+        new AgentDirectoryScanner(
+            profileRegistry,
+            table == null ? null : table.keySet(),
+            agentScheduler.getIfAvailable());
+    // 不用 requireWorkspace:扫描对缺失目录本就是零注册空操作,工作区强制检查由 profileRegistry 等既有 Bean 承担
+    scanner.scan(Path.of(workspaceRoot).resolve("agents"));
+    return scanner;
   }
 
   /** 提示词装配器;工具表来自 toolTable Bean(缺省空表). */

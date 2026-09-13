@@ -30,14 +30,13 @@ public class ProfileLoader {
 
   private static final Pattern ENV_PLACEHOLDER = Pattern.compile("\\$\\{([A-Za-z_][A-Za-z0-9_]*)}");
 
-  private final Set<String> globalProviderNames;
-
   private final ObjectMapper mapper = new ObjectMapper();
+
+  private final ProfileValidator validator;
 
   /** 创建一个按给定全局 provider 名集合校验 profile 的加载器. */
   public ProfileLoader(Set<String> globalProviderNames) {
-    this.globalProviderNames =
-        globalProviderNames == null ? Set.of() : Set.copyOf(globalProviderNames);
+    this.validator = new ProfileValidator(globalProviderNames);
   }
 
   /** 加载并校验目录下的全部 profile;文件损坏不抛异常. */
@@ -80,16 +79,11 @@ public class ProfileLoader {
     }
     Object normalized = resolveAndNormalize(raw);
     Profile profile = mapper.convertValue(normalized, Profile.class);
-    if (profile.name() == null || profile.name().isBlank()) {
-      LOGGER.error("跳过 profile 文件 {}: 缺少必填字段 'name'", sanitize(file));
-      return Optional.empty();
-    }
-    String providerName = profile.provider() == null ? null : profile.provider().name();
-    if (providerName == null || !globalProviderNames.contains(providerName)) {
-      LOGGER.error(
-          "跳过 profile '{}': provider '{}' 未在全局 provider 层声明",
-          sanitize(profile.name()),
-          sanitize(providerName));
+    try {
+      // 与运行时注册同一套校验;此处 catch 后按既有格式记日志并跳过,异常消息逐字保留
+      validator.validate(profile);
+    } catch (IllegalArgumentException e) {
+      LOGGER.error("跳过 profile 文件 {}: {}", sanitize(file), sanitize(e.getMessage()));
       return Optional.empty();
     }
     return Optional.of(profile);

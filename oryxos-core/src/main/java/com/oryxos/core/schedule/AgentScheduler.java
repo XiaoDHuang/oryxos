@@ -106,48 +106,60 @@ public class AgentScheduler {
    * 扫描全部 Profile 的 schedules 逐条登记并安装 cron. 非法规则(要素缺失/cron 或时区不可解析/id 重复)记错误日志后跳过,
    * 不阻断启动;重复调用先取消本实例旧安装再重注册,不会重复触发。定义消失的既有任务保留行与历史,候选清空、只读可查。
    */
-  @SuppressFBWarnings(
-      value = "CRLF_INJECTION_LOGS",
-      justification = "规则四要素与 profile 名来自本机管理员编写的 Profile YAML(可信本地配置,非外部输入),日志仅落本地运维通道。")
   public void registerAll() {
     cronFutures.values().forEach(future -> future.cancel(false));
     cronFutures.clear();
     catalog.clear();
     Set<String> registeredIds = new HashSet<>();
     for (Profile profile : profileRegistry.all()) {
-      for (ScheduleConfig schedule : profile.schedules()) {
-        CronTrigger trigger = buildTrigger(profile, schedule, registeredIds);
-        if (trigger == null) {
-          continue;
-        }
-        try {
-          // 登记进 Store(保留 enabled;停用任务的候选由 Store 强制为 NULL)
-          store.register(profile.name(), schedule, nextCandidate(trigger));
-        } catch (IllegalArgumentException e) {
-          LOGGER.error("定时规则 {} 登记失败,跳过注册: {}", schedule.id(), e.getMessage());
-          continue;
-        }
-        catalog.put(schedule.id(), new CatalogEntry(profile, schedule, trigger));
-        ScheduledFuture<?> future =
-            taskScheduler.schedule(() -> triggerCron(schedule.id()), trigger);
-        // 测试中未打桩的 schedule 返回 null;null 不入表,避免取消时空指针
-        if (future != null) {
-          cronFutures.put(schedule.id(), future);
-        }
-        registeredIds.add(schedule.id());
-        LOGGER.info(
-            "已注册定时任务 {}(profile={}, cron={}, zone={})",
-            schedule.id(),
-            profile.name(),
-            schedule.cron(),
-            schedule.zone());
-      }
+      registerProfile(profile, registeredIds);
     }
     // 定义消失(含本次被跳过)的既有任务:行与历史保留,候选清空,只读可查、执行拒绝
     for (ScheduledTaskView stored : store.listTasks()) {
       if (!catalog.containsKey(stored.taskId()) && stored.nextRunAt() != null) {
         store.updateNextRun(stored.taskId(), null);
       }
+    }
+  }
+
+  /**
+   * 注册单个 Profile 的全部 schedules(29 节:启动扫描与运行时新增 Agent 走同一入口). 非法规则记错误日志跳过该条, 不阻断其余;与 catalog 既有任务撞
+   * id 按重复跳过(锁按裸 id 持有,撞车会让不同任务互相阻塞)。
+   */
+  public void registerProfile(Profile profile) {
+    registerProfile(profile, new HashSet<>(catalog.keySet()));
+  }
+
+  /** 单 Profile 注册主流程(registerAll 循环体原样抽出);句柄表沿用 cronFutures,30 节注销/更新用. */
+  @SuppressFBWarnings(
+      value = "CRLF_INJECTION_LOGS",
+      justification = "规则四要素与 profile 名来自本机管理员编写的 Profile YAML(可信本地配置,非外部输入),日志仅落本地运维通道。")
+  private void registerProfile(Profile profile, Set<String> registeredIds) {
+    for (ScheduleConfig schedule : profile.schedules()) {
+      CronTrigger trigger = buildTrigger(profile, schedule, registeredIds);
+      if (trigger == null) {
+        continue;
+      }
+      try {
+        // 登记进 Store(保留 enabled;停用任务的候选由 Store 强制为 NULL)
+        store.register(profile.name(), schedule, nextCandidate(trigger));
+      } catch (IllegalArgumentException e) {
+        LOGGER.error("定时规则 {} 登记失败,跳过注册: {}", schedule.id(), e.getMessage());
+        continue;
+      }
+      catalog.put(schedule.id(), new CatalogEntry(profile, schedule, trigger));
+      ScheduledFuture<?> future = taskScheduler.schedule(() -> triggerCron(schedule.id()), trigger);
+      // 测试中未打桩的 schedule 返回 null;null 不入表,避免取消时空指针
+      if (future != null) {
+        cronFutures.put(schedule.id(), future);
+      }
+      registeredIds.add(schedule.id());
+      LOGGER.info(
+          "已注册定时任务 {}(profile={}, cron={}, zone={})",
+          schedule.id(),
+          profile.name(),
+          schedule.cron(),
+          schedule.zone());
     }
   }
 
@@ -467,6 +479,11 @@ public class AgentScheduler {
   /** 取任务 id 对应的锁(不存在则建). 包私有:harness 用它模拟"上一次还占着锁". */
   Lock lockFor(String taskId) {
     return taskLocks.computeIfAbsent(taskId, id -> new ReentrantLock());
+  }
+
+  /** 任务 id 的 cron 句柄是否在表(29 节句柄表守点). 包私有:harness 专用,生产路径经 isRegistered 判断可运行性. */
+  boolean hasCronHandle(String taskId) {
+    return cronFutures.containsKey(taskId);
   }
 
   /** 取 Profile 对应的执行互斥锁(不存在则建). 包私有:harness 用它模拟同 Profile 占用. */

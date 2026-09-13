@@ -38,6 +38,9 @@ public class AgentApiController {
   private final ProfileRegistry profileRegistry;
 
   /** 以引擎入口、会话端口与 profile 索引创建薄 Controller. */
+  @SuppressFBWarnings(
+      value = "EI_EXPOSE_REP2",
+      justification = "协作者是 Spring 容器管理的单例 Bean,Controller 的本职就是持有并驱动它们,防御性拷贝反而语义错误。")
   public AgentApiController(
       AgentService agentService, SessionManager sessionManager, ProfileRegistry profileRegistry) {
     this.agentService = agentService;
